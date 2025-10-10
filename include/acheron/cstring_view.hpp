@@ -35,7 +35,7 @@ namespace ach
 	 * }
 	 * @endcode
 	 *
-	 * @note Based on P3655
+	 * @note Based on [P3655](https://wg21.link/P3655)
 	 */
 	template<class CharT, class Traits = std::char_traits<CharT>>
 	class basic_cstring_view
