@@ -13,13 +13,13 @@ namespace ach
      * @details A deferrable type must be invocable with no arguments and nothrow move constructible
      * to prevent exceptions during scope guard transfer
      */
-    template<typename F>
+    template <typename F>
     concept is_deferrable = std::invocable<F> && std::is_nothrow_move_constructible_v<F>;
 
     /**
      * @brief Alias for `is_deferrable` concept in PascalCase style
      */
-    template<typename F>
+    template <typename F>
     concept Deferrable = is_deferrable<F>;
 
     /**
@@ -48,110 +48,114 @@ namespace ach
      * @par Thread Safety
      * defer is not thread-safe. Each instance should be owned by a single thread.
      */
-    template<Deferrable F>
+    template <Deferrable F>
     class defer
     {
     public:
-       /**
+        /**
         * @brief Constructs a defer guard with the given callable
         * @param fn Callable to execute on scope exit
         * @throws any Any exception thrown by F's constructor
         */
-       explicit constexpr defer(F&& fn) noexcept(std::is_nothrow_constructible_v<F, F&&>)
-          : fn(std::forward<F>(fn)), active(true) {}
+        explicit constexpr defer(F&& fn) noexcept(std::is_nothrow_constructible_v<F, F&&>)
+            : fn(std::forward<F>(fn)), active(true)
+        {
+        }
 
-       /**
+        /**
         * @brief Deleted copy constructor
         */
-       defer(const defer&) = delete;
+        defer(const defer&) = delete;
 
-       /**
+        /**
         * @brief Deleted copy assignment
         */
-       defer& operator=(const defer&) = delete;
+        defer& operator=(const defer&) = delete;
 
-       /**
+        /**
         * @brief Move constructor; transfers ownership of the deferred action
         * @param other Source defer guard which will be deactivated
         * @throws any Any exception thrown by F's move constructor
         * @post `other.is_active() == false`
         */
-       constexpr defer(defer&& other) noexcept(std::is_nothrow_move_constructible_v<F>)
-          : fn(std::move(other.fn)), active(std::exchange(other.active, false)) {}
+        constexpr defer(defer&& other) noexcept(std::is_nothrow_move_constructible_v<F>)
+            : fn(std::move(other.fn)), active(std::exchange(other.active, false))
+        {
+        }
 
-       /**
+        /**
         * @brief Move assignment; executes current action, if active, then takes ownership
         * @param other Source defer guard which will be deactivated
         * @return Reference to `*this`
         * @throws any Any exception thrown by F's move assignment or invocation
         * @post `other.is_active() == false`
         */
-       constexpr defer& operator=(defer&& other) noexcept(std::is_nothrow_move_assignable_v<F>
-             && std::is_nothrow_invocable_v<F>)
-       {
-          if (this != &other)
-          {
-             if (active)
-                fn();
+        constexpr defer& operator=(defer&& other) noexcept(std::is_nothrow_move_assignable_v<F>
+            && std::is_nothrow_invocable_v<F>)
+        {
+            if (this != &other)
+            {
+                if (active)
+                    fn();
 
-             fn = std::move(other.fn);
-             active = other.active;
-             other.active = false;
-          }
-          return *this;
-       }
+                fn = std::move(other.fn);
+                active = other.active;
+                other.active = false;
+            }
+            return *this;
+        }
 
-       /**
+        /**
         * @brief Destructor; executes the deferred action if still active
         * @note If F's invocation throws during stack unwinding, `std::terminate` is called
         */
-       ~defer() noexcept(std::is_nothrow_invocable_v<F>)
-       {
-          if (active)
-             fn();
-       }
+        ~defer() noexcept(std::is_nothrow_invocable_v<F>)
+        {
+            if (active)
+                fn();
+        }
 
-       /**
+        /**
         * @brief Cancels the deferred action (prevents execution on destruction)
         * @post `is_active() == false`
         */
-       constexpr void cancel() noexcept
-       {
-          active = false;
-       }
+        constexpr void cancel() noexcept
+        {
+            active = false;
+        }
 
-       /**
+        /**
         * @brief Executes the deferred action immediately and deactivates the guard
         * @throws any Any exception thrown by F's invocation
         * @post `is_active() == false`
         * @note If already inactive, this is a no-op
         */
-       constexpr void execute() noexcept(std::is_nothrow_invocable_v<F>)
-       {
-          if (active)
-          {
-             fn();
-             active = false;
-          }
-       }
+        constexpr void execute() noexcept(std::is_nothrow_invocable_v<F>)
+        {
+            if (active)
+            {
+                fn();
+                active = false;
+            }
+        }
 
-       /**
+        /**
         * @brief Checks if the deferred action is still active
         * @return `true` if the action will execute on destruction, `false` otherwise
         */
-       [[nodiscard]] constexpr bool is_active() const noexcept
-       {
-          return active;
-       }
+        [[nodiscard]] constexpr bool is_active() const noexcept
+        {
+            return active;
+        }
 
     private:
-       F fn;        ///< The callable to execute
-       bool active; ///< Whether the action is still pending
+        F fn; ///< The callable to execute
+        bool active; ///< Whether the action is still pending
     };
 
     /**
      * @brief Deduction guide for defer
      */
-    template<typename F>
+    template <typename F>
     defer(F) -> defer<F>;
 }
