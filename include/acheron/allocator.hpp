@@ -2,18 +2,15 @@
 
 #pragma once
 
-#include <algorithm>
 #include <atomic>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <new>
-#include <thread>
 #include <type_traits>
 
 #if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
 #else
 #include <sys/mman.h>
 #endif
@@ -24,7 +21,7 @@ namespace ach
 	 * @enum allocation_policy
 	 * @brief Allocation policy for the allocator
 	 */
-	enum class allocation_policy
+	enum class allocation_policy : std::uint8_t
 	{
 		local, ///< Thread-local allocation.
 		shared ///< Thread-safe allocation.
@@ -90,9 +87,7 @@ namespace ach
 #if defined(_WIN32) || defined(_WIN64)
 				base_addr = VirtualAlloc(nullptr, arena_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 				if (!base_addr)
-				{
 					throw std::bad_alloc();
-				}
 #else
 				base_addr = mmap(nullptr, arena_size, PROT_READ | PROT_WRITE,
 				                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -134,14 +129,10 @@ namespace ach
 			{
 #if defined(_WIN32) || defined(_WIN64)
 				if (base_addr)
-				{
 					VirtualFree(base_addr, 0, MEM_RELEASE);
-				}
 #else
 				if (base_addr != MAP_FAILED)
-				{
 					munmap(base_addr, arena_size);
-				}
 #endif
 			}
 
