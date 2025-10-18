@@ -27,7 +27,7 @@ namespace ach
 		shared ///< Thread-safe allocation.
 	};
 
-	namespace detail
+	namespace d
 	{
 		/**
 		 * @class arena
@@ -480,7 +480,7 @@ namespace ach
 	private:
 		static constexpr std::size_t max_arenas = 16;
 
-		using arena_type = detail::arena<P>;
+		using arena_type = d::arena<P>;
 		template<typename T>
 		using maybe_atomic = std::conditional_t<P == allocation_policy::shared, std::atomic<T>, T>;
 
@@ -696,7 +696,7 @@ namespace ach
 		};
 
 	private:
-		static constexpr std::size_t num_size_classes = detail::size_class_manager::num_size_classes;
+		static constexpr std::size_t num_size_classes = d::size_class_manager::num_size_classes;
 		using pool_type = arena_pool<P>;
 
 		static auto &get_pools() noexcept
@@ -710,7 +710,7 @@ namespace ach
 				{
 					for (std::size_t i = 0; i < num_size_classes; ++i)
 					{
-						std::size_t size_class = detail::size_class_manager::min_size << i;
+						std::size_t size_class = d::size_class_manager::min_size << i;
 #if defined(_WIN32) || defined(_WIN64)
 						void *mem = VirtualAlloc(nullptr, sizeof(pool_type),
 						                         MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -745,7 +745,7 @@ namespace ach
 				{
 					for (std::size_t i = 0; i < num_size_classes; ++i)
 					{
-						std::size_t size_class = detail::size_class_manager::min_size << i;
+						std::size_t size_class = d::size_class_manager::min_size << i;
 #if defined(_WIN32) || defined(_WIN64)
 						void *mem = VirtualAlloc(nullptr, sizeof(pool_type),
 						                         MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -780,9 +780,9 @@ namespace ach
 			std::size_t bytes = n * sizeof(T);
 			bytes = (bytes + alignof(T) - 1) & ~(alignof(T) - 1);
 
-			std::size_t size_class = detail::size_class_manager::round_to_size_class(bytes);
+			std::size_t size_class = d::size_class_manager::round_to_size_class(bytes);
 
-			if (size_class == 0 || size_class > detail::size_class_manager::max_size)
+			if (size_class == 0 || size_class > d::size_class_manager::max_size)
 			{
 #if defined(_WIN32) || defined(_WIN64)
 				void *ptr = VirtualAlloc(nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -797,7 +797,7 @@ namespace ach
 				return static_cast<T *>(ptr);
 			}
 
-			std::size_t index = detail::size_class_manager::size_to_index(size_class);
+			std::size_t index = d::size_class_manager::size_to_index(size_class);
 			auto &pools = get_pools();
 			void *ptr = pools[index]->allocate();
 
@@ -818,8 +818,8 @@ namespace ach
 			std::size_t bytes = n * sizeof(T);
 			bytes = (bytes + alignof(T) - 1) & ~(alignof(T) - 1);
 
-			std::size_t size_class = detail::size_class_manager::round_to_size_class(bytes);
-			if (size_class == 0 || size_class > detail::size_class_manager::max_size)
+			std::size_t size_class = d::size_class_manager::round_to_size_class(bytes);
+			if (size_class == 0 || size_class > d::size_class_manager::max_size)
 			{
 #if defined(_WIN32) || defined(_WIN64)
 				VirtualFree(ptr, 0, MEM_RELEASE);
@@ -829,7 +829,7 @@ namespace ach
 				return;
 			}
 
-			std::size_t index = detail::size_class_manager::size_to_index(size_class);
+			std::size_t index = d::size_class_manager::size_to_index(size_class);
 			auto &pools = get_pools();
 			pools[index]->deallocate(ptr);
 		}
