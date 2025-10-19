@@ -19,14 +19,13 @@ Acheron is composed of twelve different sub-libraries, some of which may be usef
 | variant       | Complete | Type-safe union with pattern matching and type-safe index access              |
 | cstring_view  | Complete | Null-terminated string views for C interop. Based on P3655                    |
 | allocator     | Complete | Thread-safe, and efficient memory allocator                                   |
-| bitfield      | Planned  | A target-independent bitfield                                                 |
-| static_string | Planned  | Compile-time string container                                                 |
-| algorithm     | Planned  | Hash combining and search utilities                                           |
-| arguments     | Planned  | An encoding-friendly and modern interface for accessing command-line argument |
-| codeconv      | Planned  | UTF-8/16/32 conversion utilities                                              |
-| diagnostic    | Planned  | Logging and diagnostics infrastructure                                        |
+| static_string | Complete | Compile-time string container                                                 |
+| argument      | Complete | An encoding-friendly and modern interface for accessing command-line argument |
+| codecvt       | Complete | UTF-8/16/32 conversion utilities                                              |
 | exception     | Planned  | Exceptions with stack traces                                                  |
 | task          | Planned  | Stackful cooperative multitasking                                             |
+| bitfield      | Planned  | A target-independent bitfield                                                 |
+| algorithm     | Planned  | Hash combining and search utilities                                           |
 
 ## License
 
