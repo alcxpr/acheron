@@ -4,6 +4,3 @@ project(acheron)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(acheron lib/config.cc)
-
-target_include_directories(acheron PRIVATE include)
