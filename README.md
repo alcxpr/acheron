@@ -15,7 +15,7 @@ Acheron is composed of twelve different sub-libraries, some of which may be usef
 
 | Name          | Status   | Description                                                                   |
 |---------------|----------|-------------------------------------------------------------------------------|
-| algorithm     | Planned  | Hash combining and search utilities                                           |
+| algorithm     | Complete | Hash combining and search utilities                                           |
 | allocator     | Complete | Thread-safe, and efficient memory allocator                                   |
 | argument      | Complete | An encoding-friendly and modern interface for accessing command-line argument |
 | bitfield      | Complete | A target-independent bitfield                                                 |
