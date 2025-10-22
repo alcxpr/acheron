@@ -23,7 +23,6 @@ Acheron is composed of twelve different sub-libraries, some of which may be usef
 | cstring_view  | Complete | Null-terminated string views for C interop. Based on P3655                    |
 | defer         | Complete | RAII scope guards for cleaning up dynamic resources from C side               |
 | diagnostic    | Complete | Ergonomic assertions, exceptions, with stacktraces for debugging              |
-| memory        | Planned  | C++23's missing memory functions e.g. `start_lifetime_as`                     |
 | static_string | Complete | Compile-time string container                                                 |
 | variant       | Complete | Type-safe union with pattern matching and type-safe index access              |
 
