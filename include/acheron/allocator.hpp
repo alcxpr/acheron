@@ -598,7 +598,7 @@ namespace ach
 				if (expected >= max_arenas)
 					return nullptr;
 
-				if (num_arenas.compare_exchange_strong(expected, expected + 1,
+				if (num_arenas.compare_exchange_strong(expected, expected,
 				                                       std::memory_order_acq_rel, std::memory_order_acquire))
 				{
 #if defined(_WIN32) || defined(_WIN64)
@@ -621,7 +621,7 @@ namespace ach
 
 					arenas[expected].store(new(arena_mem) arena_type(block_size),
 					                       std::memory_order_release);
-					current_arena.store(expected, std::memory_order_release);
+					current_arena.store(expected + 1, std::memory_order_release);
 
 					return arenas[expected].load(std::memory_order_acquire)->allocate();
 				}

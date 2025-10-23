@@ -3,7 +3,6 @@
 #pragma once
 
 #include <cassert>
-#include <compare>
 #include <format>
 #include <ranges>
 #include <stdexcept>

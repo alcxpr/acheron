@@ -134,8 +134,8 @@ namespace ach
         {
             if (active)
             {
+            	active = false;
                 fn();
-                active = false;
             }
         }
 
