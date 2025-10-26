@@ -14,11 +14,6 @@ or still is an active draft.
 Despite its scope, Acheron remains deliberately minimal. All features are implemented as lightweight, 
 self-contained headers with no runtime dependencies.
 
-> [!NOTE]
-> Acheron is still under active development. There are currently no automated tests or benchmarks,
-> and breaking chances are expected as the library evolves. Stability is yet to be guaranteed until tests
-> and benchmarks are in place.
-
 ## Components
 
 | Name          | Description                                                                   |
