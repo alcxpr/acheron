@@ -304,18 +304,16 @@ namespace ach
         return dst - dst_begin;
     }
 
-    /* convenience string wrappers */
-
     /**
      * @brief Convert UTF-8 string to UTF-16
      * @param input UTF-8 encoded string
-     * @return UTF-16 encoded string (as std::u16string)
+     * @return UTF-16 encoded string as std::u16string
      */
     inline std::u16string utf8_to_utf16(std::string_view input)
     {
         std::u16string output(input.size(), u'\0');
         auto src = reinterpret_cast<const std::uint8_t*>(input.data());
-        auto dst = reinterpret_cast<char16_t*>(output.data());
+        auto dst = output.data();
         std::size_t len = utf8_to_utf16(src, src + input.size(), dst, dst + output.size());
         output.resize(len);
         return output;
@@ -324,13 +322,13 @@ namespace ach
     /**
      * @brief Convert UTF-8 string to UTF-32
      * @param input UTF-8 encoded string
-     * @return UTF-32 encoded string (as std::u32string)
+     * @return UTF-32 encoded string as std::u32string
      */
     inline std::u32string utf8_to_utf32(std::string_view input)
     {
         std::u32string output(input.size(), U'\0');
         auto src = reinterpret_cast<const std::uint8_t*>(input.data());
-        auto dst = reinterpret_cast<char32_t*>(output.data());
+        auto dst = output.data();
         std::size_t len = utf8_to_utf32(src, src + input.size(), dst, dst + output.size());
         output.resize(len);
         return output;
@@ -339,7 +337,7 @@ namespace ach
     /**
      * @brief Convert UTF-16 string to UTF-8
      * @param input UTF-16 encoded string
-     * @return UTF-8 encoded string (as std::string)
+     * @return UTF-8 encoded string as std::string
      */
     inline std::string utf16_to_utf8(std::u16string_view input)
     {
@@ -354,7 +352,7 @@ namespace ach
     /**
      * @brief Convert UTF-16 string to UTF-32
      * @param input UTF-16 encoded string
-     * @return UTF-32 encoded string (as std::u32string)
+     * @return UTF-32 encoded string as std::u32string
      */
     inline std::u32string utf16_to_utf32(std::u16string_view input)
     {
@@ -369,7 +367,7 @@ namespace ach
     /**
      * @brief Convert UTF-32 string to UTF-8
      * @param input UTF-32 encoded string
-     * @return UTF-8 encoded string (as std::string)
+     * @return UTF-8 encoded string as std::string
      */
     inline std::string utf32_to_utf8(std::u32string_view input)
     {
@@ -384,16 +382,15 @@ namespace ach
     /**
      * @brief Convert UTF-32 string to UTF-16
      * @param input UTF-32 encoded string
-     * @return UTF-16 encoded string (as std::u16string)
+     * @return UTF-16 encoded string as std::u16string
      */
     inline std::u16string utf32_to_utf16(std::u32string_view input)
     {
         std::u16string output(input.size() * 2, u'\0');
-        auto src = reinterpret_cast<const char32_t*>(input.data());
-        auto dst = reinterpret_cast<char16_t*>(output.data());
+        auto src = input.data();
+        auto dst = output.data();
         std::size_t len = utf32_to_utf16(src, src + input.size(), dst, dst + output.size());
         output.resize(len);
         return output;
     }
 }
-
