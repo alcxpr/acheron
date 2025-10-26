@@ -66,9 +66,9 @@ namespace ach
                 dt[len] = str[len];
                 ++len;
             }
-            
+
             assert(str[len] == '\0' && "static_string: input string exceeds capacity");
-            
+
             dt[len] = '\0';
         }
 
@@ -81,7 +81,7 @@ namespace ach
         constexpr static_string(const char* str, size_type length) : len(0)
         {
             assert(length <= N && "static_string: input length exceeds capacity");
-            
+
             for (size_type i = 0; i < length; ++i)
             {
                 dt[i] = str[i];
@@ -109,7 +109,7 @@ namespace ach
         constexpr static_string(const static_string<M>& other) : len(0)
         {
             assert(other.size() <= N && "static_string: source string exceeds capacity");
-            
+
             for (size_type i = 0; i < other.size(); ++i)
             {
                 dt[i] = other[i];
@@ -255,7 +255,8 @@ namespace ach
          */
         constexpr reference at(size_type pos)
         {
-            assert(pos < len && "static_string::at: pos >= size()");
+        	if (pos >= len)
+        		throw std::out_of_range("static_string::at: pos >= size()");
             return dt[pos];
         }
 
@@ -267,7 +268,8 @@ namespace ach
          */
         [[nodiscard]] constexpr const_reference at(size_type pos) const
         {
-            assert(pos < len && "static_string::at: pos >= size()");
+        	if (pos >= len)
+        		throw std::out_of_range("static_string::at: pos >= size()");
             return dt[pos];
         }
 
@@ -356,7 +358,7 @@ namespace ach
         constexpr void push_back(char ch)
         {
             assert(len < N && "static_string::push_back: capacity exceeded");
-            
+
             dt[len] = ch;
             ++len;
             dt[len] = '\0';
@@ -383,7 +385,7 @@ namespace ach
         constexpr static_string& operator+=(std::string_view str)
         {
             assert(len + str.size() <= N && "static_string::operator+=: capacity exceeded");
-            
+
             for (size_type i = 0; i < str.size(); ++i)
             {
                 dt[len + i] = str[i];
