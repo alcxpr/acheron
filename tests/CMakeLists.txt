@@ -26,3 +26,8 @@ acheron_test(defer-test
         SOURCES defer.cc
         LIBS Acheron::Acheron
 )
+
+acheron_test(variant-test
+        SOURCES variant.cc
+        LIBS Acheron::Acheron
+)
