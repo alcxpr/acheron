@@ -14,7 +14,8 @@ function(acheron_executable name)
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
     # include root project's include directory
-    target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_include_directories(${name} PRIVATE ${ACHERON_INCLUDE_DIR})
+    
     # link the libraries if provided
     if (ARG_LIBS)
         target_link_libraries(${name} PRIVATE ${ARG_LIBS})

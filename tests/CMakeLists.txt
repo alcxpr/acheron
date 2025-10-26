@@ -17,6 +17,11 @@ acheron_test(bitfield-test
         LIBS Acheron::Acheron
 )
 
+acheron_test(cstring_view-test
+        SOURCES cstring_view.cc
+        LIBS Acheron::Acheron
+)
+
 acheron_test(defer-test
         SOURCES defer.cc
         LIBS Acheron::Acheron
