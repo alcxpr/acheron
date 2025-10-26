@@ -12,6 +12,11 @@ acheron_test(allocator-test
         FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer
 )
 
+acheron_executable(argument-test
+        SOURCES argument.cc
+        LIBS Acheron::Acheron
+)
+
 acheron_test(bitfield-test
         SOURCES bitfield.cc
         LIBS Acheron::Acheron

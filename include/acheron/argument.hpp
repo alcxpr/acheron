@@ -230,45 +230,45 @@ namespace ach
                     data.args.emplace_back(data.strings.back());
                 }
 #elif defined(ACH_PLATFORM_LINUX)
-                FILE* f = fopen("/proc/self/cmdline", "rb");
-                if (!f)
-                    return;
+				std::FILE* f = fopen("/proc/self/cmdline", "rb");
+				if (!f)
+					return;
 
-                fseek(f, 0, SEEK_END);
-                long size = ftell(f);
-                fseek(f, 0, SEEK_SET);
+				std::vector<char> buffer;
+				constexpr std::size_t chunk_size = 4096;
+				char temp[chunk_size];
 
-                if (size <= 0)
-                {
-                    fclose(f);
-                    return;
-                }
+				while (true)
+				{
+					std::size_t bytes_read = fread(temp, 1, chunk_size, f);
+					if (bytes_read == 0)
+						break;
+					buffer.insert(buffer.end(), temp, temp + bytes_read);
+					if (bytes_read < chunk_size)
+						break;
+				}
 
-                std::vector<char> buffer(size);
-                if (fread(buffer.data(), 1, size, f) != static_cast<std::size_t>(size))
-                {
-                    fclose(f);
-                    return;
-                }
-                fclose(f);
+				std::fclose(f);
+				if (buffer.empty())
+					return;
 
-                const char* ptr = buffer.data();
-                const char* end = buffer.data() + size;
-                
-                while (ptr < end)
-                {
-                    const char* str_end = ptr;
-                    while (str_end < end && *str_end != '\0')
-                        ++str_end;
-                    
-                    if (str_end == ptr)
-                        break;
-                    
-                    data.strings.emplace_back(ptr, str_end - ptr);
-                    data.args.emplace_back(data.strings.back());
-                    
-                    ptr = str_end + 1;
-                }
+				const char* ptr = buffer.data();
+				const char* end = buffer.data() + buffer.size();
+
+				while (ptr < end)
+				{
+					const char* str_end = ptr;
+					while (str_end < end && *str_end != '\0')
+						++str_end;
+
+					if (str_end == ptr)
+						break;
+
+					data.strings.emplace_back(ptr, str_end - ptr);
+					data.args.emplace_back(data.strings.back());
+
+					ptr = str_end + 1;
+				}
 #endif
             });
         }
