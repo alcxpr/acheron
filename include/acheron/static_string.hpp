@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <format>
 #include <string_view>
-#include <acheron/cstring_view.hpp>
 
 namespace ach
 {
@@ -83,9 +82,7 @@ namespace ach
             assert(length <= N && "static_string: input length exceeds capacity");
 
             for (size_type i = 0; i < length; ++i)
-            {
                 dt[i] = str[i];
-            }
             len = length;
             dt[len] = '\0';
         }
@@ -600,26 +597,6 @@ namespace ach
     {
         static_string<N1 + N2> result;
         result += std::string_view(lhs);
-        result += std::string_view(rhs);
-        return result;
-    }
-
-    /** @brief Concatenation with string_view */
-    template <std::size_t N>
-    constexpr auto operator+(const static_string<N>& lhs, std::string_view rhs)
-    {
-        static_string<N + 256> result;
-        result += std::string_view(lhs);
-        result += rhs;
-        return result;
-    }
-
-    /** @brief Concatenation with string_view (reversed) */
-    template <std::size_t N>
-    constexpr auto operator+(std::string_view lhs, const static_string<N>& rhs)
-    {
-        static_string<256 + N> result;
-        result += lhs;
         result += std::string_view(rhs);
         return result;
     }
