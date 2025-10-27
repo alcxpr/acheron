@@ -229,11 +229,12 @@ namespace ach
     counter(I) -> counter<I>;
 
 	/**
-	 * @brief A move-only handle that provides exclusive ownership of a single value
+	 * @brief A move-only wrapper that provides `std::unique_ptr<T>` semantics without heap allocation
 	 *
-	 * `resource<T>` models ownership semantics similar to Rust's `Box<T>` or `std::unique_ptr<T>`,
-	 * but with value semantics rather than pointer semantics. It can be *borrowed* via
-	 * `borrow()` to yield `T&`, `const T&`, or `T&&` depending on the expression category.
+	 * `resource<T>` stores a value inline while enforcing exclusive ownership through deleted
+	 * copy operations. Use this when you need move-only semantics with value storage, such as
+	 * RAII types in containers where you want to avoid the double allocation overhead of
+	 * `std::vector<std::unique_ptr<T>>`.
 	 *
 	 * @tparam T The contained type
 	 */
@@ -258,7 +259,8 @@ namespace ach
 		 * @brief Constructs a resource owning the given value
 		 * @param v The value to take ownership of
 		 */
-		explicit resource(value_type v) : value(std::move(v)) {}
+		explicit resource(value_type v)  noexcept(std::is_nothrow_move_constructible_v<value_type>)
+			: value(std::move(v)) {}
 
 		/** @brief Deleted copy constructor */
 		resource(const resource&) = delete;
@@ -327,9 +329,21 @@ namespace ach
 	 * @return A `resource<T>` owning the provided value
 	 */
 	template<typename T>
-	constexpr auto make_resource(T v)
+	constexpr auto make_resource(T v) noexcept(std::is_nothrow_move_constructible_v<T>)
 	{
 		return resource<T>(std::move(v));
+	}
+
+	namespace d
+	{
+		template<typename T>
+		struct is_resource : std::false_type {};
+
+		template<typename T>
+		struct is_resource<resource<T>> : std::true_type {};
+
+		template<typename T>
+		inline constexpr bool is_resource_v = is_resource<std::remove_cvref_t<T>>::value;
 	}
 
 	/**
@@ -346,7 +360,8 @@ namespace ach
 	 * @return A reference (`T&`, `const T&`) or rvalue (`T&&`) to the contained value
 	 */
 	template<typename R>
-	constexpr decltype(auto) borrow(R&& r)
+		requires d::is_resource_v<R>
+	constexpr decltype(auto) borrow(R&& r) noexcept
 	{
 		using raw_t = std::remove_reference_t<R>;
 		using T = raw_t::value_type;
