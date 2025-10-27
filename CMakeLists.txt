@@ -24,6 +24,12 @@ target_include_directories(acheron INTERFACE
 
 target_compile_features(acheron INTERFACE cxx_std_23)
 
+# <acheron/diagnostics.hpp> requires stdc++exp for <stacktrace>
+# in debug mode
+target_link_libraries(acheron INTERFACE
+        $<$<NOT:$<CONFIG:Release>>:stdc++exp>
+)
+
 # test, bench and examples
 if (ACHERON_BUILD_TESTS)
     enable_testing()

@@ -37,6 +37,11 @@ acheron_test(defer-test
         LIBS Acheron::Acheron
 )
 
+acheron_executable(diagnostic-test
+        SOURCES diagnostic.cc
+        LIBS Acheron::Acheron
+)
+
 acheron_test(static_string-test
         SOURCES static_string.cc
         LIBS Acheron::Acheron
