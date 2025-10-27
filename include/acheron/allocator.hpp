@@ -811,9 +811,7 @@ namespace ach
 		void deallocate(T *ptr, size_type n) noexcept
 		{
 			if (!ptr || n == 0)
-			{
 				return;
-			}
 
 			std::size_t bytes = n * sizeof(T);
 			bytes = (bytes + alignof(T) - 1) & ~(alignof(T) - 1);
