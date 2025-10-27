@@ -66,7 +66,7 @@ namespace ach
                 ++len;
             }
 
-            assert(str[len] == '\0' && "static_string: input string exceeds capacity");
+            assert(str[len] == '\0', "static_string: input string exceeds capacity");
 
             dt[len] = '\0';
         }
@@ -105,12 +105,10 @@ namespace ach
         template <std::size_t M>
         constexpr static_string(const static_string<M>& other) : len(0)
         {
-            assert(other.size() <= N && "static_string: source string exceeds capacity");
+            assert(other.size() <= N, "static_string: source string exceeds capacity");
 
             for (size_type i = 0; i < other.size(); ++i)
-            {
                 dt[i] = other[i];
-            }
             len = other.size();
             dt[len] = '\0';
         }

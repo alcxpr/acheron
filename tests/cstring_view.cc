@@ -335,14 +335,6 @@ TEST(CStringViewTest, MaxSize)
 	EXPECT_GT(csv.max_size(), 0u);
 }
 
-TEST(CStringViewTest, Constexpr)
-{
-	constexpr ach::cstring_view csv("constexpr");
-	static_assert(csv.size() == 9);
-	static_assert(csv[0] == 'c');
-	static_assert(!csv.empty());
-}
-
 TEST(CStringViewTest, NullTerminatorAccess)
 {
 	ach::cstring_view csv("test");

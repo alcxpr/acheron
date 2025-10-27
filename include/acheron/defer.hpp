@@ -148,7 +148,7 @@ namespace ach
 
     private:
         F fn; ///< The callable to execute
-        bool active = {}; ///< Whether the action is still pending
+        bool active = true; ///< Whether the action is still pending
     };
 
     /**

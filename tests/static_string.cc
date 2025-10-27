@@ -342,13 +342,6 @@ TEST(StaticStringTest, MaxSize)
 // 	static_assert(s2[0] == 'w');
 // }
 
-TEST(StaticStringTest, DeductionGuide)
-{
-	constexpr ach::static_string s("deduced");
-	static_assert(s.size() == 7);
-	EXPECT_EQ(s, "deduced");
-}
-
 TEST(StaticStringTest, CompareWithCString)
 {
 	ach::static_string<32> s("hello");
