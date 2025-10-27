@@ -16,18 +16,19 @@ self-contained headers with no runtime dependencies.
 
 ## Components
 
-| Name          | Description                                                                   |
-|---------------|-------------------------------------------------------------------------------|
-| algorithm     | Hash combining and search utilities                                           |
-| allocator     | Thread-safe, and efficient memory allocator                                   |
-| arguments     | An encoding-friendly and modern interface for accessing command-line argument |
-| bitfield      | A target-independent bitfield                                                 |
-| codecvt       | UTF-8/16/32 conversion utilities                                              |
-| cstring_view  | Null-terminated string views for C interop. Based on P3655                    |
-| defer         | RAII scope guards for cleaning up dynamic resources from C side               |
-| diagnostic    | Ergonomic assertions, exceptions, with stacktraces for debugging              |
-| static_string | Compile-time string container                                                 |
-| variant       | Type-safe union with pattern matching and type-safe index access              |
+| Name          | Description                                                                    |
+|---------------|--------------------------------------------------------------------------------|
+| algorithm     | Hash combining and search utilities                                            |
+| allocator     | Thread-safe, and efficient memory allocator                                    |
+| arguments     | An encoding-friendly and modern interface for accessing command-line argument  |
+| bitfield      | A target-independent bitfield                                                  |
+| codecvt       | UTF-8/16/32 conversion utilities                                               |
+| cstring_view  | Null-terminated string views for C interop. Based on P3655                     |
+| defer         | RAII scope guards for cleaning up dynamic resources from C side                |
+| diagnostic    | Ergonomic assertions, exceptions, with stacktraces for debugging               |
+| static_string | Compile-time string container                                                  |
+| utility       | Utilities for C++ like counter                                                 |
+| variant       | Type-safe union with pattern matching and type-safe index access               |
 
 ## License
 

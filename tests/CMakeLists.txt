@@ -42,6 +42,12 @@ acheron_test(static_string-test
         LIBS Acheron::Acheron
 )
 
+acheron_test(utility-test
+        SOURCES utility.cc
+        LIBS Acheron::Acheron
+        FLAGS -fsanitize=thread,undefined -fno-omit-frame-pointer
+)
+
 acheron_test(variant-test
         SOURCES variant.cc
         LIBS Acheron::Acheron
