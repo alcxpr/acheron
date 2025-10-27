@@ -3,11 +3,11 @@
 #pragma once
 
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include "diagnostic.hpp"
 
 namespace ach
 {
@@ -40,7 +40,7 @@ namespace ach
         {
             constexpr std::uint32_t max_utf32 = 0x0010FFFF;
             constexpr std::uint32_t high_begin = 0xD800;
-            constexpr std::uint32_t high_end = 0xDBFF;
+            [[maybe_unused]] constexpr std::uint32_t high_end = 0xDBFF;
             constexpr std::uint32_t low_begin = 0xDC00;
             constexpr std::uint32_t low_end = 0xDFFF;
             constexpr std::uint32_t max_bmp = 0x0000FFFF;
@@ -59,7 +59,7 @@ namespace ach
                 *begin++ = static_cast<std::uint16_t>(replacement_char);
             else
             {
-                assert(begin + 1 < end && "utf32_to_utf16: buffer overflow");
+                ach::debug_assert(begin + 1 < end, "utf32_to_utf16: buffer overflow");
                 c -= base;
                 *begin++ = static_cast<std::uint16_t>((c >> shift) + high_begin);
                 *begin++ = static_cast<std::uint16_t>((c & mask) + low_begin);
@@ -89,7 +89,7 @@ namespace ach
                 c = replacement_char;
             }
 
-            assert(begin + bytes <= end && "utf32_to_utf8: buffer overflow");
+            ach::debug_assert(begin + bytes <= end, "utf32_to_utf8: buffer overflow");
 
             begin += bytes;
             switch (bytes)
@@ -126,7 +126,7 @@ namespace ach
             const std::uint32_t c1 = *begin++;
             if (c1 >= high_begin && c1 <= high_end)
             {
-                assert(begin < end && "utf16_to_utf32: incomplete surrogate pair");
+                ach::debug_assert(begin < end, "utf16_to_utf32: incomplete surrogate pair");
                 const std::uint32_t c2 = *begin++;
                 if (c2 >= low_begin && c2 <= low_end)
                     return ((c1 - high_begin) << shift) + (c2 - low_begin) + base;
@@ -146,7 +146,7 @@ namespace ach
             std::uint32_t c = 0;
             std::uint8_t bytes = utf8_bytes[static_cast<std::uint8_t>(*begin)];
 
-            assert(begin + bytes < end && "utf8_to_utf32: incomplete sequence");
+            ach::debug_assert(begin + bytes < end, "utf8_to_utf32: incomplete sequence");
             switch (bytes)
             {
                 case 5:

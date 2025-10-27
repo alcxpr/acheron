@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include <cassert>
 #include <cstddef>
 #include <format>
 #include <string_view>
+#include "diagnostic.hpp"
 
 namespace ach
 {
@@ -79,7 +79,7 @@ namespace ach
          */
         constexpr static_string(const char* str, size_type length) : len(0)
         {
-            assert(length <= N && "static_string: input length exceeds capacity");
+            ach::debug_assert(length <= N, "static_string: input length exceeds capacity");
 
             for (size_type i = 0; i < length; ++i)
                 dt[i] = str[i];
@@ -354,7 +354,7 @@ namespace ach
          */
         constexpr void push_back(char ch)
         {
-            assert(len < N && "static_string::push_back: capacity exceeded");
+            ach::debug_assert(len < N, "static_string::push_back: capacity exceeded");
 
             dt[len] = ch;
             ++len;
@@ -381,12 +381,11 @@ namespace ach
          */
         constexpr static_string& operator+=(std::string_view str)
         {
-            assert(len + str.size() <= N && "static_string::operator+=: capacity exceeded");
+            ach::debug_assert(len + str.size() <= N, "static_string::operator+=: capacity exceeded");
 
             for (size_type i = 0; i < str.size(); ++i)
-            {
                 dt[len + i] = str[i];
-            }
+
             len += str.size();
             dt[len] = '\0';
             return *this;

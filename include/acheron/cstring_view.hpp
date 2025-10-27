@@ -2,12 +2,12 @@
 
 #pragma once
 
-#include <cassert>
 #include <format>
 #include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include "diagnostic.hpp"
 
 namespace ach
 {
@@ -88,7 +88,7 @@ namespace ach
 		 */
 		constexpr basic_cstring_view(const CharT *str, size_type len) : dt(str), sz(len)
 		{
-			assert(str[len] == CharT());
+			ach::debug_assert(str[len] == CharT(), "");
 		}
 
 		/** @brief Deleted constructor from nullptr */
@@ -184,7 +184,7 @@ namespace ach
 		 */
 		constexpr const_reference operator[](size_type pos) const
 		{
-			assert(pos <= sz);
+			ach::debug_assert(pos <= sz, "");
 			return dt[pos];
 		}
 

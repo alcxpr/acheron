@@ -142,6 +142,38 @@ namespace ach
 	}
 
 	/**
+	* @brief Debug-only assertion that is compiled out in release builds
+	* @param condition Condition to check
+	* @param message Pre-formatted error message by caller
+	* @param location Auto-captured source location
+	* 
+	* @details
+	* Behaves like `ach::assert()` in debug builds (NDEBUG not defined),
+	* but becomes a no-op in release builds for zero runtime overhead.
+	* Use this for performance-critical hot paths where the check has
+	* measurable impact but still want validation during development.
+	* 
+	* @par Example
+	* @code
+	* void foo(int* ptr, std::size_t size)
+	* {
+	*     ach::debug_assert(ptr != nullptr, "pointer is null");
+	*     ach::debug_assert(size > 0, std::format("invalid size: {}", size));
+	* }
+	* @endcode
+	* 
+	* @note For library invariants that should always be checked, use `ach::assert()` instead.
+	*/
+	inline void debug_assert([[maybe_unused]] bool condition, 
+							[[maybe_unused]] std::string_view message, 
+							[[maybe_unused]] std::source_location location = std::source_location::current())
+	{
+#if defined(DEBUG) || !defined(NDEBUG)
+		::ach::assert(condition, message, location);
+#endif
+	}
+
+	/**
 	 * @brief Immediately terminates the program with a message
 	 * @param message Error message
 	 * @param location Auto-captured source location
@@ -169,7 +201,7 @@ namespace ach
 	 */
 	[[noreturn]] inline void panic(std::string_view message, std::source_location location = std::source_location::current()) 
     {
-		assert(false, message, location);
+		::ach::assert(false, message, location);
 		std::unreachable();
 	}
 
@@ -250,9 +282,9 @@ namespace ach
 	 */
     inline void debug(std::string_view message, std::source_location location = std::source_location::current())
     {
-        #if defined(DEBUG) || !defined(NDEBUG)
-        info(message, location);
-        #endif
+#if defined(DEBUG) || !defined(NDEBUG)
+        ::ach::info(message, location);
+#endif
         return;
     }
 }
@@ -265,3 +297,4 @@ namespace ach
 #define ACH_DEBUG(msg)            ::ach::debug((msg), std::source_location::current())
 #define ACH_UNREACHABLE()         ::ach::panic("unreachable code reached", std::source_location::current())
 #define ACH_TODO(msg)             ::ach::panic(std::format("TODO: {}", (msg)), std::source_location::current())
+#define ACH_DEBUG_ASSERT(cond, msg)   ::ach::debug_assert((cond), (msg), std::source_location::current())

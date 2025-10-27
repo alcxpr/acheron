@@ -58,9 +58,7 @@ namespace ach
         * @throws any Any exception thrown by F's constructor
         */
         explicit constexpr defer(F&& fn) noexcept(std::is_nothrow_constructible_v<F, F&&>)
-            : fn(std::forward<F>(fn)), active(true)
-        {
-        }
+            : fn(std::forward<F>(fn)) {}
 
         /**
         * @brief Deleted copy constructor
@@ -150,7 +148,7 @@ namespace ach
 
     private:
         F fn; ///< The callable to execute
-        bool active; ///< Whether the action is still pending
+        bool active = {}; ///< Whether the action is still pending
     };
 
     /**
