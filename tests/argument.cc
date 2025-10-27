@@ -1,6 +1,6 @@
 /* this file is part of the Acheron library project, licensed under the MIT license. see `LICENSE.txt` for details */
 
-#include <acheron/argument.hpp>
+#include <acheron/arguments.hpp>
 #include <algorithm>
 #include <cassert>
 #include <iostream>

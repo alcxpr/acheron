@@ -20,7 +20,7 @@ self-contained headers with no runtime dependencies.
 |---------------|-------------------------------------------------------------------------------|
 | algorithm     | Hash combining and search utilities                                           |
 | allocator     | Thread-safe, and efficient memory allocator                                   |
-| argument      | An encoding-friendly and modern interface for accessing command-line argument |
+| arguments     | An encoding-friendly and modern interface for accessing command-line argument |
 | bitfield      | A target-independent bitfield                                                 |
 | codecvt       | UTF-8/16/32 conversion utilities                                              |
 | cstring_view  | Null-terminated string views for C interop. Based on P3655                    |
