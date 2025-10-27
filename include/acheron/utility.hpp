@@ -227,4 +227,136 @@ namespace ach
      */
     template<std::integral I>
     counter(I) -> counter<I>;
+
+	/**
+	 * @brief A move-only handle that provides exclusive ownership of a single value
+	 *
+	 * `resource<T>` models ownership semantics similar to Rust's `Box<T>` or `std::unique_ptr<T>`,
+	 * but with value semantics rather than pointer semantics. It can be *borrowed* via
+	 * `borrow()` to yield `T&`, `const T&`, or `T&&` depending on the expression category.
+	 *
+	 * @tparam T The contained type
+	 */
+	template<typename T>
+	class resource
+	{
+	public:
+		/** @brief The type of the contained value */
+		using value_type = T;
+		/** @brief Mutable reference type */
+		using reference = value_type&;
+		/** @brief Const reference type */
+		using const_reference = const value_type&;
+		/** @brief Rvalue reference type */
+		using rvalue_reference = value_type&&;
+		/** @brief Pointer to contained value */
+		using pointer = value_type*;
+		/** @brief Const pointer to contained value */
+		using const_pointer = const value_type*;
+
+		/**
+		 * @brief Constructs a resource owning the given value
+		 * @param v The value to take ownership of
+		 */
+		explicit resource(value_type v) : value(std::move(v)) {}
+
+		/** @brief Deleted copy constructor */
+		resource(const resource&) = delete;
+
+		/** @brief Deleted copy assignment operator */
+		resource& operator=(const resource&) = delete;
+
+		/** @brief Move constructor */
+		resource(resource&&) = default;
+
+		/** @brief Move assignment operator */
+		resource& operator=(resource&&) = default;
+
+		/**
+		 * @brief Explicit conversion to mutable reference
+		 * @return `T&` reference to the contained value
+		 */
+		constexpr explicit operator reference() & noexcept
+		{
+			return value;
+		}
+
+		/**
+		 * @brief Explicit conversion to const reference
+		 * @return `const T&` reference to the contained value
+		 */
+		constexpr explicit operator const_reference() const& noexcept
+		{
+			return value;
+		}
+
+		/**
+		 * @brief Explicit conversion to rvalue reference
+		 * @return `T&&` rvalue reference to the contained value
+		 */
+		constexpr explicit operator rvalue_reference() && noexcept
+		{
+			return std::move(value);
+		}
+
+	private:
+		/** @brief The underlying resource */
+		value_type value;
+	};
+
+	/**
+	 * @brief Deduction guide for `resource<T>`
+	 *
+	 * Enables automatic deduction of `T` when constructing a `resource`
+	 * directly, e.g. `resource r{42};` deduces `resource<int>`.
+	 *
+	 * @tparam T The deduced contained type
+	 */
+	template<typename T>
+	resource(T) -> resource<T>;
+
+	/**
+	 * @brief Constructs a `resource` by taking ownership of a value
+	 *
+	 * This function wraps the given value in a `resource<T>` to provide
+	 * exclusive ownership semantics. Equivalent to calling the constructor
+	 * directly, but often clearer in generic contexts.
+	 *
+	 * @tparam T The type of the value to own
+	 * @param v The value to move into the resource
+	 * @return A `resource<T>` owning the provided value
+	 */
+	template<typename T>
+	constexpr auto make_resource(T v)
+	{
+		return resource<T>(std::move(v));
+	}
+
+	/**
+	 * @brief Obtains a reference or value from a `resource` according to expression category
+	 *
+	 * This function provides a borrowing mechanism that automatically yields the correct
+	 * reference type based on how the resource is passed:
+	 * - If passed as a lvalue, yields `T&`
+	 * - If passed as a const lvalue, yields `const T&`
+	 * - If passed as a rvalue, yields `T&&`
+	 *
+	 * @tparam R The resource type, which must be a specialization of `resource<T>`
+	 * @param r The resource to borrow from
+	 * @return A reference (`T&`, `const T&`) or rvalue (`T&&`) to the contained value
+	 */
+	template<typename R>
+	constexpr decltype(auto) borrow(R&& r)
+	{
+		using raw_t = std::remove_reference_t<R>;
+		using T = raw_t::value_type;
+
+		if constexpr (std::is_rvalue_reference_v<R&&>)
+			/* note: we already know that this branch will be a rvalue reference so we can move it */
+			return static_cast<T&&>(std::move(r)); // NOLINT(*-move-forwarding-reference)
+		else if constexpr (std::is_const_v<raw_t>)
+			return static_cast<const T&>(r);
+		else
+			return static_cast<T&>(r);
+	}
 }
