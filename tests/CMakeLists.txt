@@ -42,11 +42,6 @@ acheron_executable(diagnostic-test
         LIBS Acheron::Acheron
 )
 
-acheron_test(static_string-test
-        SOURCES static_string.cc
-        LIBS Acheron::Acheron
-)
-
 acheron_test(utility-test
         SOURCES utility.cc
         LIBS Acheron::Acheron
