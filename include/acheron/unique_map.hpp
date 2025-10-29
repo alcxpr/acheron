@@ -23,11 +23,12 @@ namespace ach
     };
 
     /**
-     * @brief A specialized lookup table with stable pointer semantics.
+     * @brief A specialized lookup table with stable key pointer semantics.
      *
      * unique_map is an open-addressed hash table that maintains stable pointers
-     * to keys and values. Keys are never destroyed after insertion (only reassigned),
-     * while values are destroyed on erase but their addresses remain valid until reused.
+     * to keys. Keys are never destroyed or moved after insertion (only reassigned
+     * on slot reuse). Values may be moved during vector reallocation and are
+     * destroyed on erase.
      *
      * @tparam Key Key type.
      * @tparam Value Mapped value type.
@@ -71,9 +72,10 @@ namespace ach
         [[no_unique_address]] allocator_type allocator;
 
         std::vector<std::size_t> buckets;
-        std::vector<key_type> keys;
+        std::vector<key_type*> key_ptrs;
         std::vector<mapped_type> values;
         std::vector<slot_state> states;
+        freelist<key_type> key_storage;
         freelist<std::size_t> slot_freelist;
 
         std::size_t occupied_count = 0;
@@ -95,11 +97,13 @@ namespace ach
                     && std::is_nothrow_copy_constructible_v<key_equal>
                     && std::is_nothrow_copy_constructible_v<allocator_type>
                     && std::is_nothrow_constructible_v<std::vector<std::size_t>>
+                    && std::is_nothrow_constructible_v<freelist<key_type>, std::size_t>
                     && std::is_nothrow_constructible_v<freelist<std::size_t>, std::size_t>)
             : hash_function(hash)
             , key_eq(equal)
             , allocator(alloc)
             , buckets(bucket_count, npos)
+            , key_storage(0)
             , slot_freelist(0)
         {}
 
@@ -127,7 +131,7 @@ namespace ach
          */
         [[nodiscard]] std::size_t max_size() const noexcept
         {
-            return std::size_t(-3); /* reserve npos and tombstone */
+            return std::size_t(-3);
         }
 
         /**
@@ -135,7 +139,6 @@ namespace ach
          */
         void clear() noexcept
         {
-            /* destroy all values */
             if constexpr (!std::is_trivially_destructible_v<mapped_type>)
             {
                 for (std::size_t i = 0; i < states.size(); ++i)
@@ -145,17 +148,11 @@ namespace ach
                 }
             }
 
-            /* destroy all keys */
-            if constexpr (!std::is_trivially_destructible_v<key_type>)
-            {
-                for (std::size_t i = 0; i < keys.size(); ++i)
-                    keys[i].~key_type();
-            }
-
             buckets.clear();
-            keys.clear();
+            key_ptrs.clear();
             values.clear();
             states.clear();
+            key_storage = freelist<key_type>(0);
             slot_freelist = freelist<std::size_t>(0);
             occupied_count = 0;
         }
@@ -205,7 +202,6 @@ namespace ach
 
             std::size_t idx = buckets[h];
             
-            /* destroy value but leave key alive */
             if constexpr (!std::is_trivially_destructible_v<mapped_type>)
                 values[idx].~mapped_type();
 
@@ -295,9 +291,10 @@ namespace ach
             swap(key_eq, other.key_eq);
             swap(allocator, other.allocator);
             swap(buckets, other.buckets);
-            swap(keys, other.keys);
+            swap(key_ptrs, other.key_ptrs);
             swap(values, other.values);
             swap(states, other.states);
+            swap(key_storage, other.key_storage);
             swap(slot_freelist, other.slot_freelist);
             swap(occupied_count, other.occupied_count);
         }
@@ -308,16 +305,13 @@ namespace ach
             if (buckets.empty())
                 return npos;
 
-            std::size_t h = (hash_function(key)) % buckets.size();
-            __builtin_prefetch(&buckets[h], 0, 3);
+            std::size_t h = hash_function(key) % buckets.size();
             while (buckets[h] != npos)
             {
                 if (buckets[h] != tombstone)
                 {
                     std::size_t idx = buckets[h];
-                    __builtin_prefetch(&keys[idx], 0, 3);
-                    __builtin_prefetch(&values[idx], 0, 3);
-                    if (states[idx] == slot_state::occupied && key_eq(keys[idx], key))
+                    if (states[idx] == slot_state::occupied && key_eq(*key_ptrs[idx], key))
                         return h;
                 }
                 h = (h + 1) % buckets.size();
@@ -331,36 +325,36 @@ namespace ach
                     && std::is_nothrow_constructible_v<mapped_type, Args...>
                     && std::is_nothrow_assignable_v<key_type&, KeyArg>)
         {
-            /* check load factor and rehash if necessary */
             if (should_rehash())
                 rehash(buckets.size() * 2);
 
-            /* find insertion point */
             std::size_t h = hash_function(key) % buckets.size();
             while (buckets[h] != npos && buckets[h] != tombstone)
             {
                 std::size_t idx = buckets[h];
-                if (states[idx] == slot_state::occupied && key_eq(keys[idx], key))
-                    /* key exists, return existing */
-                    return { &keys[idx], &values[idx], false };
+                if (states[idx] == slot_state::occupied && key_eq(*key_ptrs[idx], key))
+                    return {key_ptrs[idx], &values[idx], false};
                 h = (h + 1) % buckets.size();
             }
 
-            /* allocate or reuse slot */
             std::size_t idx;
+            key_type* key_ptr;
+            
             if (!slot_freelist.empty())
             {
-                /* reuse deleted slot */
-                idx = *slot_freelist.pop()->value();
-                /* assign key and construct value */
-                keys[idx] = std::forward<KeyArg>(key);
+                std::size_t* idx_storage = slot_freelist.pop()->value();
+                idx = *idx_storage;
+                slot_freelist.push(reinterpret_cast<freelist<std::size_t>::node_type*>(idx_storage));
+                
+                key_ptr = key_ptrs[idx];
+                *key_ptr = std::forward<KeyArg>(key);
                 ::new (&values[idx]) mapped_type(std::forward<Args>(args)...);
             }
             else
             {
-                /* allocate new slot */
-                idx = keys.size();
-                keys.push_back(std::forward<KeyArg>(key));
+                idx = values.size();
+                key_ptr = key_storage.emplace(std::forward<KeyArg>(key));
+                key_ptrs.push_back(key_ptr);
                 values.emplace_back(std::forward<Args>(args)...);
                 states.push_back(slot_state::occupied);
             }
@@ -369,7 +363,7 @@ namespace ach
             buckets[h] = idx;
             ++occupied_count;
 
-            return { &keys[idx], &values[idx], true };
+            return {key_ptr, &values[idx], true};
         }
 
         [[nodiscard]] bool should_rehash() const noexcept
@@ -387,7 +381,7 @@ namespace ach
             {
                 if (states[i] == slot_state::occupied)
                 {
-                    std::size_t h = hash_function(keys[i]) % new_bucket_count;
+                    std::size_t h = hash_function(*key_ptrs[i]) % new_bucket_count;
                     while (new_buckets[h] != npos)
                         h = (h + 1) % new_bucket_count;
                     new_buckets[h] = i;

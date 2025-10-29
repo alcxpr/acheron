@@ -45,6 +45,13 @@ acheron_executable(diagnostic-test
 acheron_test(freelist-test
         SOURCES freelist.cc
         LIBS Acheron::Acheron
+        FLAGS -fsanitize=thread,undefined -fno-omit-frame-pointer
+)
+
+acheron_test(unique_map-test
+        SOURCES unique_map.cc
+        LIBS Acheron::Acheron
+        FLAGS -fsanitize=thread,undefined -fno-omit-frame-pointer
 )
 
 acheron_test(utility-test
