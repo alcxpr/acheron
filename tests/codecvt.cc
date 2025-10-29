@@ -3,7 +3,6 @@
 #include <acheron/codecvt.hpp>
 #include <gtest/gtest.h>
 #include <string>
-#include <string_view>
 
 using namespace ach;
 

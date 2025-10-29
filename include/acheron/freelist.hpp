@@ -210,7 +210,7 @@ namespace ach
             requires (!std::is_pointer_v<T>)
         {
             obj->~T();
-            release(reinterpret_cast<node_type*>(obj));
+            push(reinterpret_cast<node_type*>(obj));
         }
 
         /**

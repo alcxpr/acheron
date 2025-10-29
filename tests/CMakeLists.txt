@@ -42,6 +42,11 @@ acheron_executable(diagnostic-test
         LIBS Acheron::Acheron
 )
 
+acheron_test(freelist-test
+        SOURCES freelist.cc
+        LIBS Acheron::Acheron
+)
+
 acheron_test(utility-test
         SOURCES utility.cc
         LIBS Acheron::Acheron
