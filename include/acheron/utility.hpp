@@ -510,4 +510,36 @@ namespace ach
     private:
         T data;
     };
+
+    /**
+     * @brief Explicitly extract the underlying value from a distinct type
+     * 
+     * Provides a safe, explicit way to unwrap distinct types back to their
+     * underlying representation. The name makes it clear this is a deliberate
+     * type-level conversion, not a casual cast.
+     * 
+     * @tparam T The underlying type to extract
+     * @tparam Tag The tag type of the distinct wrapper
+     * @param d The distinct value to unwrap
+     * @return The underlying value
+     */
+    template<typename T, typename Tag>
+    constexpr T type_cast(const distinct<T, Tag>& d) noexcept(noexcept(d.value()))
+    {
+        return d.value();
+    }
+    
+    /**
+     * @brief Explicitly extract the underlying value from a distinct type as an rvalue
+     * 
+     * @tparam T The underlying type to extract
+     * @tparam Tag The tag type of the distinct wrapper
+     * @param d The distinct value to unwrap
+     * @return The underlying value (moved if applicable)
+     */
+    template<typename T, typename Tag>
+    constexpr T type_cast(distinct<T, Tag>&& d) noexcept(noexcept(std::move(d).value()))
+    {
+        return std::move(d).value();
+    }
 }
