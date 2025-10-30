@@ -5,6 +5,7 @@
 #include <atomic>
 #include <concepts>
 #include <cstddef>
+#include <type_traits>
 
 namespace ach
 {
@@ -137,7 +138,7 @@ namespace ach
          */
         value_type operator--(int) noexcept
         {
-            return val.fetch_sub(1, increment_order);
+            return val.fetch_sub(1, decrement_order);
         }
 
         /**
@@ -374,4 +375,139 @@ namespace ach
 		else
 			return static_cast<T&>(r);
 	}
+
+    /**
+     * @brief A type wrapper that creates a distinct type from an underlying type.
+     *
+     * This class template creates a new type that wraps an underlying value type,
+     * preventing implicit conversions to and from the underlying type while preserving
+     * comparison semantics. The Tag parameter allows creating multiple distinct types
+     * from the same underlying type.
+     *
+     * @tparam T The underlying value type
+     * @tparam Tag A tag type to distinguish between different distinct types with the same underlying type
+     */
+    template<typename T, typename Tag = void>
+    class distinct 
+    {
+    public:
+        using value_type = T;
+        using tag_type = Tag;
+        
+        /**
+         * @brief Explicitly construct a distinct value from the underlying type.
+         * @param v The underlying value
+         * @exception Throws whatever T's copy/move constructor throws
+         */
+        explicit constexpr distinct(T v) noexcept(std::is_nothrow_move_constructible_v<T>)
+            : data(static_cast<T&&>(v)) {}
+        
+        /**
+         * @brief Deleted conversion constructor to prevent implicit conversions from other types.
+         */
+        template<typename U>
+        distinct(U) = delete;
+        
+        /**
+         * @brief Deleted implicit conversion operator to prevent implicit conversions to underlying type.
+         */
+        operator T() const = delete;
+        
+        /**
+         * @brief Explicitly access the underlying value.
+         * @return The underlying value
+         * @exception noexcept if T is nothrow copy constructible
+         */
+        constexpr T value() const noexcept(std::is_nothrow_copy_constructible_v<T>) 
+        { 
+            return data; 
+        }
+
+    private:
+        T data;
+    };
+
+    /**
+     * @brief Specialization of distinct for integral types.
+     *
+     * This specialization adds support for using distinct integral types as
+     * non-type template parameters by allowing implicit conversion
+     * in constant-evaluated contexts.
+     *
+     * @tparam T The underlying integral type
+     * @tparam Tag A tag type to distinguish between different distinct types
+     */
+    template<std::integral T, typename Tag>
+    class distinct<T, Tag> 
+    {
+    public:
+        using value_type = T;
+        using tag_type = Tag;
+        
+        /**
+         * @brief Explicitly construct a distinct integral value.
+         * @param v The underlying integral value
+         * @exception noexcept
+         */
+        explicit constexpr distinct(T v) noexcept : data(v) {}
+        
+        /**
+         * @brief Deleted conversion constructor to prevent implicit conversions from other types.
+         */
+        template<typename U>
+        distinct(U) = delete;
+        
+        /**
+         * @brief Deleted implicit conversion operator to prevent implicit conversions to underlying type.
+         */
+        operator T() const = delete;
+        
+        /**
+         * @brief Explicitly access the underlying value.
+         * @return The underlying integral value
+         * @exception noexcept
+         */
+        constexpr T value() const noexcept
+        { 
+            return data; 
+        }
+        
+        /**
+         * @brief Allow implicit conversion in constant-evaluated contexts.
+         *
+         * This enables the use of distinct integral types as non-type template parameters.
+         * The conversion is only available during constant evaluation to prevent 
+         * accidental runtime conversions.
+         *
+         * @return The underlying integral value
+         * @exception noexcept (integral types are trivially copyable)
+         */
+        consteval operator T() const noexcept
+        {
+            return data;
+        }
+        
+       /**
+        * @brief Three-way comparison operator (consteval only).
+        * @param rhs The right-hand side of the comparison
+        * @return The result of comparing the underlying values
+        */
+        consteval auto operator<=>(const distinct& rhs) const noexcept(noexcept(data <=> rhs.data))
+        {
+            return data <=> rhs.data;
+        }
+        
+        /**
+        * @brief Equality comparison operator (consteval only).
+        * @param rhs The right-hand side of the comparison
+        * @return true if the underlying values are equal
+        */
+        consteval bool operator==(const distinct& rhs) const noexcept(noexcept(data == rhs.data))
+        {
+            return data == rhs.data;
+        }
+
+    private:
+        T data;
+    };
 }
