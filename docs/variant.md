@@ -1,6 +1,6 @@
 # Variant
 
-`std::variant` is a powerful type introduced in C++17, however, it can be cumbersome to use as it requires verbose `std::visit` calls and can lead to boilerplate code.
+`std::variant` is a powerful type introduced in C++17, however, it can be cumbersome to use as it requires verbose `std::visit` calls and can lead to boilerplate code. 
 `ach::variant` solves this with natural switch case support and pattern matching while being standard conforming (except the extensions).
 
 ### Usage
