@@ -39,7 +39,7 @@ namespace ach
 		class arena
 		{
 		public:
-			static constexpr std::size_t arena_size = 64 * 1024 * 1024; ///< Size of each arena in bytes (64MB)
+			static constexpr std::size_t arena_size = 32 * 1024 * 1024; ///< Size of each arena in bytes (32MB)
 			static constexpr std::size_t l2_per_l1 = 64; ///< Number of L2 bitmap words per L1 bitmap bit
 
 		private:
