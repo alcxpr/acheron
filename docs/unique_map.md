@@ -20,8 +20,8 @@ map.emplace("another", 100);
 assert(stable_key == key_ptr); // Still points to same key
 
 // Lookup
-if (auto it = map.find("key"); it != map.end()) {
-    int value = *it->second;
+if (auto* value_ptr = map.find("key")) {
+    int value = *value_ptr;
 }
 ```
 
