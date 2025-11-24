@@ -20,6 +20,8 @@
 #define ACH_PLATFORM_WINDOWS
 #include <windows.h>
 #include <shellapi.h>
+#include <io.h>
+#include <fcntl.h>
 #elif defined(__APPLE__)
 #define ACH_PLATFORM_MACOS
 #include <crt_externs.h>
@@ -196,6 +198,14 @@ namespace ach
             static std::once_flag flag;
             std::call_once(flag, []()
             {
+#ifdef ACH_PLATFORM_WINDOWS
+            	_setmode(_fileno(stdout), _O_U16TEXT);
+				DWORD mode;
+				HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+				if (hOut != INVALID_HANDLE_VALUE && GetConsoleMode(hOut, &mode))
+					SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+#endif
                 auto& data = get_args_data();
 
 #ifdef ACH_PLATFORM_WINDOWS

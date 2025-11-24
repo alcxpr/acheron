@@ -1,14 +1,14 @@
 # this file is part of the Acheron library project, licensed under the MIT license. see `LICENSE.txt` for details
 
 cmake_minimum_required(VERSION 3.15)
-project(acheron LANGUAGES CXX)
+project(acheron LANGUAGES C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(ACHERON_INCLUDE_DIR "${CMAKE_CURRENT_DIR}/include")
 
 option(ACHERON_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(ACHERON_BUILD_EXAMPLES "Build examples" OFF)
-option(ACHERON_BUILD_TESTS "Build tests" ON)
+option(ACHERON_BUILD_TESTS "Build tests" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(acheron.utils)
