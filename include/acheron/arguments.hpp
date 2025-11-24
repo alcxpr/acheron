@@ -18,6 +18,8 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define ACH_PLATFORM_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 #include <shellapi.h>
 #include <io.h>
