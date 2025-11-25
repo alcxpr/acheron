@@ -208,7 +208,7 @@ namespace ach
 		 */
 		[[nodiscard]] constexpr const_reference front() const
 		{
-			ach::assert(!empty(), "cstring_view is empty!");
+			ach::expect(!empty(), "cstring_view is empty!");
 			return dt[0];
 		}
 
@@ -219,7 +219,7 @@ namespace ach
 		 */
 		[[nodiscard]] constexpr const_reference back() const
 		{
-			ach::assert(!empty(), "cstring_view is empty!");
+			ach::expect(!empty(), "cstring_view is empty!");
 			return dt[sz - 1];
 		}
 
@@ -258,7 +258,7 @@ namespace ach
 		 */
 		constexpr void remove_prefix(size_type n)
 		{
-			assert(n <= size(), "cstring_view::remove_prefix: n is larger than the string length");
+			expect(n <= size(), "cstring_view::remove_prefix: n is larger than the string length");
 			dt += n;
 			sz -= n;
 		}

@@ -137,15 +137,15 @@ namespace ach
 	 * @code
 	 * void process(int* ptr, std::size_t size)
 	 * {
-	 *     ach::assert(ptr != nullptr, "pointer is null");
-	 *     ach::assert(size > 0, std::format("invalid size: {}", size));
+	 *     ach::expect(ptr != nullptr, "pointer is null");
+	 *     ach::expect(size > 0, std::format("invalid size: {}", size));
 	 * }
 	 * @endcode
 	 *
 	 * @note This function always checks the condition regardless of build type.
 	 * Only the stack trace capture is conditional on NDEBUG.
 	 */
-	inline void assert(bool condition, std::string_view message, std::source_location location = std::source_location::current())
+	inline void expect(bool condition, std::string_view message, std::source_location location = std::source_location::current())
 	{
 		if (!condition) [[unlikely]]
 		{
@@ -190,7 +190,7 @@ namespace ach
 							[[maybe_unused]] std::source_location location = std::source_location::current())
 	{
 #if defined(DEBUG) || !defined(NDEBUG)
-		::ach::assert(condition, message, location);
+		::ach::expect(condition, message, location);
 #endif
 	}
 
@@ -222,7 +222,7 @@ namespace ach
 	 */
 	[[noreturn]] inline void panic(std::string_view message, std::source_location location = std::source_location::current())
 	{
-		::ach::assert(false, message, location);
+		::ach::expect(false, message, location);
 		std::unreachable();
 	}
 
