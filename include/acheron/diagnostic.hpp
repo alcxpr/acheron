@@ -27,6 +27,7 @@ namespace ach
 		inline constexpr const char* bold_yellow = "\033[1;33m";
 		inline constexpr const char* bold_blue = "\033[1;34m";
 		inline constexpr const char* dim_gray = "\033[90m";
+		inline constexpr const char* bold_cyan = "\033[1;36m";
 
 		/* return color code if enabled, empty string otherwise */
 		constexpr const char* c(const char* code)
@@ -297,10 +298,11 @@ namespace ach
 	 * }
 	 * @endcode
 	 */
-	inline void debug(std::string_view message, std::source_location location = std::source_location::current())
+	inline void debug([[maybe_unused]] std::string_view message, [[maybe_unused]] std::source_location location = std::source_location::current())
 	{
 #if defined(DEBUG) || !defined(NDEBUG)
-		::ach::info(message, location);
+        std::cerr << d::c(d::bold_cyan) << "[DEBUG]" << d::c(d::reset) << " " << message;
+		std::cerr << " " << d::c(d::dim_gray) << "(" << location.file_name() << ":" << location.line() << ")" << d::c(d::reset) << "\n";
 #endif
 	}
 }
