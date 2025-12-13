@@ -32,6 +32,6 @@ target_link_libraries(acheron INTERFACE
 
 # test, bench and examples
 if (ACHERON_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
+  enable_testing()
+  add_subdirectory(tests)
 endif ()

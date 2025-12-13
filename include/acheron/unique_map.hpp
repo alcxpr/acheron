@@ -3,34 +3,33 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <utility>
-#include <vector>
+#include <bit>
 #include "allocator.hpp"
-#include "freelist.hpp"
 
 namespace ach
 {
 	/**
-	 * @brief Slot state for unique_map entries.
-	 */
-	enum class slot_state : std::uint8_t
-	{
-		empty,
-		occupied,
-		deleted
-	};
-
-	/**
-	 * @brief A specialized lookup table with stable key pointer semantics.
+	 * @brief A high-performance open-addressed hash table optimized for lookup speed.
 	 *
-	 * unique_map is an open-addressed hash table that maintains stable pointers
-	 * to keys. Keys are never destroyed or moved after insertion (only reassigned
-	 * on slot reuse). Values may be moved during vector reallocation and are
-	 * destroyed on erase.
+	 * unique_map uses Robin Hood hashing with linear probing and a separate metadata array
+	 * for cache-optimal lookups. The metadata is scanned without touching key/value data,
+	 * minimizing cache misses on lookup failures.
 	 *
-	 * @tparam Key Key type.
+	 * Memory layout:
+	 * - Metadata array: 1 byte per slot [occupied:1 | psl:7]
+	 * - Key/value array: inline storage, accessed only on metadata match
+	 *
+	 * Performance characteristics:
+	 * - Lookup: O(1) average, ~2-3 cache misses on hit, ~1 on miss
+	 * - Insert: O(1) average with Robin Hood displacement
+	 * - Erase: O(1) with backward shift deletion (no tombstones)
+	 *
+	 * @tparam Key Key type (must be copyable or moveable).
 	 * @tparam Value Mapped value type.
 	 * @tparam Hash Hash function object type.
 	 * @tparam KeyEqual Key equality comparison function object type.
@@ -38,7 +37,7 @@ namespace ach
 	 */
 	template<typename Key, typename Value, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>,
 					 typename Allocator = ach::allocator<std::byte>>
-	class [[deprecated("There are performance issues with the implementation. Please use std::unordered_map instead.")]] unique_map
+	class unique_map
 	{
 	public:
 		using key_type = Key;
@@ -59,43 +58,517 @@ namespace ach
 			bool inserted;
 		};
 
+		/**
+		 * @brief Iterator for traversing the map.
+		 */
+		class iterator
+		{
+			friend class unique_map;
+
+		private:
+			unique_map *map;
+			size_type index;
+
+			iterator(unique_map *m, size_type idx) noexcept : map(m), index(idx) {}
+
+		public:
+			using iterator_category = std::forward_iterator_tag;
+			using value_type = std::pair<const key_type &, mapped_type &>;
+			using difference_type = std::ptrdiff_t;
+			using pointer = void;
+			using reference = value_type;
+
+			iterator() noexcept : map(nullptr), index(0) {}
+
+			reference operator*() const noexcept
+			{
+				return { map->keys[index], map->values[index] };
+			}
+
+			iterator &operator++() noexcept
+			{
+				do
+				{
+					++index;
+				} while (index < map->capacity && !map->is_occupied(index));
+				return *this;
+			}
+
+			iterator operator++(int) noexcept
+			{
+				iterator tmp = *this;
+				++(*this);
+				return tmp;
+			}
+
+			bool operator==(const iterator &other) const noexcept
+			{
+				return map == other.map && index == other.index;
+			}
+
+			bool operator!=(const iterator &other) const noexcept
+			{
+				return !(*this == other);
+			}
+		};
+
+		/**
+		 * @brief Const iterator for traversing the map.
+		 */
+		class const_iterator
+		{
+			friend class unique_map;
+
+		private:
+			const unique_map *map;
+			size_type index;
+
+			const_iterator(const unique_map *m, size_type idx) noexcept : map(m), index(idx) {}
+
+		public:
+			using iterator_category = std::forward_iterator_tag;
+			using value_type = std::pair<const key_type &, const mapped_type &>;
+			using difference_type = std::ptrdiff_t;
+			using pointer = void;
+			using reference = value_type;
+
+			const_iterator() noexcept : map(nullptr), index(0) {}
+			const_iterator(const iterator &it) noexcept : map(it.map), index(it.index) {}
+
+			reference operator*() const noexcept
+			{
+				return { map->keys[index], map->values[index] };
+			}
+
+			const_iterator &operator++() noexcept
+			{
+				do
+				{
+					++index;
+				} while (index < map->capacity && !map->is_occupied(index));
+				return *this;
+			}
+
+			const_iterator operator++(int) noexcept
+			{
+				const_iterator tmp = *this;
+				++(*this);
+				return tmp;
+			}
+
+			bool operator==(const const_iterator &other) const noexcept
+			{
+				return map == other.map && index == other.index;
+			}
+
+			bool operator!=(const const_iterator &other) const noexcept
+			{
+				return !(*this == other);
+			}
+		};
+
 	private:
-		static constexpr size_type npos = static_cast<std::size_t>(-1);
-		static constexpr size_type tombstone = static_cast<std::size_t>(-2);
+		/**
+		 * @brief Metadata byte layout: [occupied:1 | psl:7]
+		 *
+		 * Keeping metadata separate from key/value data allows scanning
+		 * metadata without cache misses on the actual data.
+		 */
+		static constexpr std::uint8_t EMPTY = 0x00;
+		static constexpr std::uint8_t OCCUPIED_BIT = 0x80;
+		static constexpr std::uint8_t PSL_MASK = 0x7F;
+
+		static constexpr size_type default_capacity = 16;
+		static constexpr size_type max_psl = 127;
+		static constexpr double max_load_factor = 0.875;
 
 		[[no_unique_address]] hasher hash_function;
 		[[no_unique_address]] key_equal key_eq;
 		[[no_unique_address]] allocator_type allocator;
 
-		std::vector<std::size_t> buckets;
-		std::vector<key_type *> key_ptrs;
-		std::vector<mapped_type> values;
-		std::vector<slot_state> states;
-		freelist<key_type> key_storage;
-		freelist<std::size_t> slot_freelist;
+		std::uint8_t *metadata; /* hot: scanned on every lookup */
+		key_type *keys;         /* cold: accessed only on metadata match */
+		mapped_type *values;    /* cold: accessed only on metadata match */
+		size_type capacity;
+		size_type occupied_count;
 
-		std::size_t occupied_count = 0;
+		/**
+		 * @brief Check if a slot is occupied.
+		 */
+		bool is_occupied(size_type idx) const noexcept
+		{
+			return metadata[idx] & OCCUPIED_BIT;
+		}
+
+		/**
+		 * @brief Get PSL value from metadata.
+		 */
+		std::uint8_t get_psl(size_type idx) const noexcept
+		{
+			return metadata[idx] & PSL_MASK;
+		}
+
+		/**
+		 * @brief Set metadata to occupied with given PSL.
+		 */
+		void set_occupied(size_type idx, std::uint8_t psl) noexcept
+		{
+			metadata[idx] = OCCUPIED_BIT | (psl & PSL_MASK);
+		}
+
+		/**
+		 * @brief Mark slot as empty.
+		 */
+		void set_empty(size_type idx) noexcept
+		{
+			metadata[idx] = EMPTY;
+		}
+
+		/**
+		 * @brief Round up to the next power of 2.
+		 */
+		static constexpr size_type next_power_of_2(size_type n) noexcept
+		{
+			if (n <= default_capacity)
+				return default_capacity;
+			if (std::has_single_bit(n))
+				return n;
+			return std::bit_ceil(n);
+		}
+
+		/**
+		 * @brief Allocate metadata, keys, and values arrays.
+		 */
+		void allocate_arrays(size_type count)
+		{
+			/* allocate metadata array (hot path) */
+			metadata = reinterpret_cast<std::uint8_t *>(allocator.allocate(count * sizeof(std::uint8_t)));
+			std::memset(metadata, EMPTY, count * sizeof(std::uint8_t));
+
+			/* allocate keys array */
+			keys = reinterpret_cast<key_type *>(allocator.allocate(count * sizeof(key_type)));
+
+			/* allocate values array */
+			values = reinterpret_cast<mapped_type *>(allocator.allocate(count * sizeof(mapped_type)));
+		}
+
+		/**
+		 * @brief Deallocate all arrays.
+		 */
+		void deallocate_arrays() noexcept
+		{
+			if (metadata)
+			{
+				/* destroy occupied keys and values */
+				for (size_type i = 0; i < capacity; ++i)
+				{
+					if (is_occupied(i))
+					{
+						if constexpr (!std::is_trivially_destructible_v<key_type>)
+							keys[i].~key_type();
+						if constexpr (!std::is_trivially_destructible_v<mapped_type>)
+							values[i].~mapped_type();
+					}
+				}
+
+				allocator.deallocate(reinterpret_cast<std::byte *>(metadata), capacity * sizeof(std::uint8_t));
+				allocator.deallocate(reinterpret_cast<std::byte *>(keys), capacity * sizeof(key_type));
+				allocator.deallocate(reinterpret_cast<std::byte *>(values), capacity * sizeof(mapped_type));
+
+				metadata = nullptr;
+				keys = nullptr;
+				values = nullptr;
+			}
+		}
+
+		/**
+		 * @brief Find the slot index for a key, or capacity if not found.
+		 *
+		 * Uses linear probing with Robin Hood early termination.
+		 * Linear probing has better cache behavior than quadratic despite clustering.
+		 */
+		size_type find_index(const key_type &key) const noexcept
+		{
+			if (capacity == 0)
+				return 0;
+
+			size_type mask = capacity - 1;
+			size_type idx = hash_function(key) & mask;
+			std::uint8_t dist = 0;
+
+			/* linear probing: scan metadata without touching keys/values */
+			while (dist <= max_psl)
+			{
+				/* empty slot means key not found */
+				if (!is_occupied(idx))
+					return capacity;
+
+				/* Robin Hood invariant: if we've probed further than the slot's PSL,
+				 * the key would have been placed earlier */
+				if (get_psl(idx) < dist)
+					return capacity;
+
+				/* metadata matches, check actual key (cold path) */
+				if (key_eq(keys[idx], key))
+					return idx;
+
+				idx = (idx + 1) & mask;
+				++dist;
+			}
+
+			return capacity;
+		}
+
+		/**
+		 * @brief Insert a key-value pair using move semantics (for rehashing).
+		 *
+		 * Precondition: capacity must be sufficient to insert the element without exceeding max_load_factor.
+		 * This is guaranteed by reserve() which checks capacity before beginning rehashing.
+		 */
+		void insert_slot_move(key_type &&key, mapped_type &&value)
+		{
+			size_type mask = capacity - 1;
+			size_type idx = hash_function(key) & mask;
+			std::uint8_t psl_val = 0;
+
+			key_type k = std::move(key);
+			mapped_type v = std::move(value);
+
+			while (psl_val <= max_psl)
+			{
+				/* empty slot, insert here */
+				if (!is_occupied(idx))
+				{
+					::new (static_cast<void *>(&keys[idx])) key_type(std::move(k));
+					::new (static_cast<void *>(&values[idx])) mapped_type(std::move(v));
+					set_occupied(idx, psl_val);
+					return;
+				}
+
+				/* Robin Hood: steal from the rich (swap with longer PSL) */
+				std::uint8_t slot_psl = get_psl(idx);
+				if (slot_psl < psl_val)
+				{
+					using std::swap;
+					swap(k, keys[idx]);
+					swap(v, values[idx]);
+					swap(psl_val, slot_psl);
+					set_occupied(idx, slot_psl);
+				}
+
+				idx = (idx + 1) & mask;
+				++psl_val;
+			}
+
+			/* PSL exceeded max_psl - this should never happen if reserve() sized the table correctly.
+			 * This indicates either a catastrophically bad hash function or a bug in reserve(). */
+			/* TODO: consider making this an assertion in debug builds */
+		}
+
+		/**
+		 * @brief Emplace implementation.
+		 */
+		template<typename KeyArg, typename... Args>
+		insert_return_type emplace_impl(KeyArg &&key_arg, Args &&...args)
+		{
+			/* check if we need to grow */
+			if (capacity == 0 || static_cast<double>(occupied_count + 1) > max_load_factor * capacity)
+				reserve(capacity == 0 ? default_capacity : capacity * 2);
+
+			size_type mask = capacity - 1;
+			size_type idx = hash_function(key_arg) & mask;
+			std::uint8_t psl_val = 0;
+
+			key_type k(std::forward<KeyArg>(key_arg));
+			mapped_type v(std::forward<Args>(args)...);
+			bool inserting = true;
+
+			while (psl_val <= max_psl)
+			{
+				/* empty slot, insert here */
+				if (!is_occupied(idx))
+				{
+					::new (static_cast<void *>(&keys[idx])) key_type(std::move(k));
+					::new (static_cast<void *>(&values[idx])) mapped_type(std::move(v));
+					set_occupied(idx, psl_val);
+					++occupied_count;
+					return { &keys[idx], &values[idx], true };
+				}
+
+				/* check if key already exists */
+				if (inserting && key_eq(keys[idx], k))
+					return { &keys[idx], &values[idx], false };
+
+				/* Robin Hood: steal from the rich */
+				std::uint8_t slot_psl = get_psl(idx);
+				if (inserting && slot_psl < psl_val)
+				{
+					using std::swap;
+					swap(k, keys[idx]);
+					swap(v, values[idx]);
+					swap(psl_val, slot_psl);
+					set_occupied(idx, slot_psl);
+					inserting = false; /* now we're displacing an existing entry */
+				}
+
+				idx = (idx + 1) & mask;
+				++psl_val;
+			}
+
+			/* PSL exceeded maximum, need to grow */
+			reserve(capacity * 2);
+			return emplace_impl(std::move(k), std::move(v));
+		}
+
+		/**
+		 * @brief Erase element at index using backward shift deletion.
+		 *
+		 * Backward shift maintains Robin Hood invariants and eliminates tombstones.
+		 */
+		void erase_at(size_type idx)
+		{
+			if constexpr (!std::is_trivially_destructible_v<key_type>)
+				keys[idx].~key_type();
+			if constexpr (!std::is_trivially_destructible_v<mapped_type>)
+				values[idx].~mapped_type();
+
+			set_empty(idx);
+			--occupied_count;
+
+			/* backward shift deletion */
+			size_type mask = capacity - 1;
+			size_type curr = idx;
+			size_type next = (curr + 1) & mask;
+
+			while (is_occupied(next))
+			{
+				std::uint8_t next_psl = get_psl(next);
+				if (next_psl == 0)
+					break; /* can't shift an entry at its ideal position */
+
+				/* move next slot backward */
+				::new (static_cast<void *>(&keys[curr])) key_type(std::move(keys[next]));
+				::new (static_cast<void *>(&values[curr])) mapped_type(std::move(values[next]));
+				set_occupied(curr, next_psl - 1);
+
+				if constexpr (!std::is_trivially_destructible_v<key_type>)
+					keys[next].~key_type();
+				if constexpr (!std::is_trivially_destructible_v<mapped_type>)
+					values[next].~mapped_type();
+
+				set_empty(next);
+
+				curr = next;
+				next = (curr + 1) & mask;
+			}
+		}
 
 	public:
 		/**
-		 * @brief Construct an empty unique_map with the specified bucket count.
-		 * @param bucket_count Initial number of buckets.
+		 * @brief Construct an empty unique_map with the specified capacity.
+		 * @param initial_capacity Initial number of slots (will be rounded up to power of 2).
 		 * @param hash Hash function object.
 		 * @param equal Key equality function object.
 		 * @param alloc Allocator object.
 		 */
 		explicit unique_map(
-						std::size_t bucket_count = 16, const hasher &hash = hasher(), const key_equal &equal = key_equal(),
-						const allocator_type &alloc =
-										allocator_type()) noexcept(std::is_nothrow_copy_constructible_v<hasher> &&
-																							 std::is_nothrow_copy_constructible_v<key_equal> &&
-																							 std::is_nothrow_copy_constructible_v<allocator_type> &&
-																							 std::is_nothrow_constructible_v<std::vector<std::size_t>> &&
-																							 std::is_nothrow_constructible_v<freelist<key_type>, std::size_t> &&
-																							 std::is_nothrow_constructible_v<freelist<std::size_t>, std::size_t>) :
-				hash_function(hash), key_eq(equal), allocator(alloc), buckets(bucket_count, npos), key_storage(0),
-				slot_freelist(0)
-		{}
+						size_type initial_capacity = default_capacity, const hasher &hash = hasher(),
+						const key_equal &equal = key_equal(),
+						const allocator_type &alloc = allocator_type()) noexcept(std::is_nothrow_copy_constructible_v<hasher> &&
+																																							std::is_nothrow_copy_constructible_v<key_equal> &&
+																																							std::is_nothrow_copy_constructible_v<allocator_type>) :
+				hash_function(hash),
+				key_eq(equal), allocator(alloc), metadata(nullptr), keys(nullptr), values(nullptr), capacity(0),
+				occupied_count(0)
+		{
+			reserve(initial_capacity);
+		}
+
+		/**
+		 * @brief Copy constructor.
+		 */
+		unique_map(const unique_map &other) :
+				hash_function(other.hash_function), key_eq(other.key_eq), allocator(other.allocator), metadata(nullptr),
+				keys(nullptr), values(nullptr), capacity(0), occupied_count(0)
+		{
+			if (other.capacity > 0)
+			{
+				reserve(other.capacity);
+				for (size_type i = 0; i < other.capacity; ++i)
+				{
+					if (other.is_occupied(i))
+					{
+						::new (static_cast<void *>(&keys[i])) key_type(other.keys[i]);
+						::new (static_cast<void *>(&values[i])) mapped_type(other.values[i]);
+						metadata[i] = other.metadata[i];
+						++occupied_count;
+					}
+				}
+			}
+		}
+
+		/**
+		 * @brief Move constructor.
+		 */
+		unique_map(unique_map &&other) noexcept :
+				hash_function(std::move(other.hash_function)), key_eq(std::move(other.key_eq)),
+				allocator(std::move(other.allocator)), metadata(other.metadata), keys(other.keys), values(other.values),
+				capacity(other.capacity), occupied_count(other.occupied_count)
+		{
+			other.metadata = nullptr;
+			other.keys = nullptr;
+			other.values = nullptr;
+			other.capacity = 0;
+			other.occupied_count = 0;
+		}
+
+		/**
+		 * @brief Destructor.
+		 */
+		~unique_map()
+		{
+			deallocate_arrays();
+		}
+
+		/**
+		 * @brief Copy assignment operator.
+		 */
+		unique_map &operator=(const unique_map &other)
+		{
+			if (this != &other)
+			{
+				unique_map tmp(other);
+				swap(tmp);
+			}
+			return *this;
+		}
+
+		/**
+		 * @brief Move assignment operator.
+		 */
+		unique_map &operator=(unique_map &&other) noexcept
+		{
+			if (this != &other)
+			{
+				deallocate_arrays();
+
+				hash_function = std::move(other.hash_function);
+				key_eq = std::move(other.key_eq);
+				allocator = std::move(other.allocator);
+				metadata = other.metadata;
+				keys = other.keys;
+				values = other.values;
+				capacity = other.capacity;
+				occupied_count = other.occupied_count;
+
+				other.metadata = nullptr;
+				other.keys = nullptr;
+				other.values = nullptr;
+				other.capacity = 0;
+				other.occupied_count = 0;
+			}
+			return *this;
+		}
 
 		/**
 		 * @brief Check if the map is empty.
@@ -110,7 +583,7 @@ namespace ach
 		 * @brief Get the number of elements in the map.
 		 * @return Number of occupied slots.
 		 */
-		[[nodiscard]] std::size_t size() const noexcept
+		[[nodiscard]] size_type size() const noexcept
 		{
 			return occupied_count;
 		}
@@ -119,9 +592,27 @@ namespace ach
 		 * @brief Get the maximum possible number of elements.
 		 * @return Maximum size.
 		 */
-		[[nodiscard]] std::size_t max_size() const noexcept
+		[[nodiscard]] size_type max_size() const noexcept
 		{
-			return std::size_t(-3);
+			return size_type(-1) / (sizeof(std::uint8_t) + sizeof(key_type) + sizeof(mapped_type));
+		}
+
+		/**
+		 * @brief Get the current capacity (number of slots).
+		 * @return Current capacity.
+		 */
+		[[nodiscard]] size_type bucket_count() const noexcept
+		{
+			return capacity;
+		}
+
+		/**
+		 * @brief Get the current load factor.
+		 * @return Ratio of occupied slots to total capacity.
+		 */
+		[[nodiscard]] double load_factor() const noexcept
+		{
+			return capacity > 0 ? static_cast<double>(occupied_count) / capacity : 0.0;
 		}
 
 		/**
@@ -129,22 +620,82 @@ namespace ach
 		 */
 		void clear() noexcept
 		{
-			if constexpr (!std::is_trivially_destructible_v<mapped_type>)
+			if (metadata)
 			{
-				for (std::size_t i = 0; i < states.size(); ++i)
+				for (size_type i = 0; i < capacity; ++i)
 				{
-					if (states[i] == slot_state::occupied)
-						values[i].~mapped_type();
+					if (is_occupied(i))
+					{
+						if constexpr (!std::is_trivially_destructible_v<key_type>)
+							keys[i].~key_type();
+						if constexpr (!std::is_trivially_destructible_v<mapped_type>)
+							values[i].~mapped_type();
+						set_empty(i);
+					}
 				}
 			}
-
-			buckets.clear();
-			key_ptrs.clear();
-			values.clear();
-			states.clear();
-			key_storage = freelist<key_type>(0);
-			slot_freelist = freelist<std::size_t>(0);
 			occupied_count = 0;
+		}
+
+		/**
+		 * @brief Reserve space for at least the specified number of elements.
+		 * @param new_capacity Minimum number of slots to allocate.
+		 */
+		void reserve(size_type new_capacity)
+		{
+			new_capacity = next_power_of_2(new_capacity);
+			if (new_capacity <= capacity)
+				return;
+
+			std::uint8_t *old_metadata = metadata;
+			key_type *old_keys = keys;
+			mapped_type *old_values = values;
+			size_type old_capacity = capacity;
+			size_type old_occupied = occupied_count;
+
+			allocate_arrays(new_capacity);
+			capacity = new_capacity;
+			occupied_count = 0; /* reset count, will be rebuilt during rehashing */
+
+			if (old_metadata)
+			{
+				/* reserve enough capacity for all existing elements to avoid recursive growth */
+				if (static_cast<double>(old_occupied) > max_load_factor * new_capacity)
+				{
+					/* this should never happen if reserve() was called with correct size,
+					 * but handle it defensively */
+					allocator.deallocate(reinterpret_cast<std::byte *>(metadata), new_capacity * sizeof(std::uint8_t));
+					allocator.deallocate(reinterpret_cast<std::byte *>(keys), new_capacity * sizeof(key_type));
+					allocator.deallocate(reinterpret_cast<std::byte *>(values), new_capacity * sizeof(mapped_type));
+
+					reserve(new_capacity * 2);
+					/* recursive call with doubled capacity - will eventually succeed */
+					old_metadata = metadata;
+					old_keys = keys;
+					old_values = values;
+					old_capacity = capacity;
+					old_occupied = occupied_count;
+					occupied_count = 0;
+				}
+
+				for (size_type i = 0; i < old_capacity; ++i)
+				{
+					if (old_metadata[i] & OCCUPIED_BIT)
+					{
+						insert_slot_move(std::move(old_keys[i]), std::move(old_values[i]));
+						++occupied_count;
+
+						if constexpr (!std::is_trivially_destructible_v<key_type>)
+							old_keys[i].~key_type();
+						if constexpr (!std::is_trivially_destructible_v<mapped_type>)
+							old_values[i].~mapped_type();
+					}
+				}
+
+				allocator.deallocate(reinterpret_cast<std::byte *>(old_metadata), old_capacity * sizeof(std::uint8_t));
+				allocator.deallocate(reinterpret_cast<std::byte *>(old_keys), old_capacity * sizeof(key_type));
+				allocator.deallocate(reinterpret_cast<std::byte *>(old_values), old_capacity * sizeof(mapped_type));
+			}
 		}
 
 		/**
@@ -155,10 +706,7 @@ namespace ach
 		 * @return insert_return_type containing pointers to key and value, and insertion status.
 		 */
 		template<typename... Args>
-		insert_return_type emplace(const key_type &key,
-															 Args &&...args) noexcept(std::is_nothrow_copy_constructible_v<key_type> &&
-																												std::is_nothrow_constructible_v<mapped_type, Args...> &&
-																												std::is_nothrow_copy_assignable_v<key_type>)
+		insert_return_type emplace(const key_type &key, Args &&...args)
 		{
 			return emplace_impl(key, std::forward<Args>(args)...);
 		}
@@ -171,12 +719,31 @@ namespace ach
 		 * @return insert_return_type containing pointers to key and value, and insertion status.
 		 */
 		template<typename... Args>
-		insert_return_type emplace(key_type &&key,
-															 Args &&...args) noexcept(std::is_nothrow_move_constructible_v<key_type> &&
-																												std::is_nothrow_constructible_v<mapped_type, Args...> &&
-																												std::is_nothrow_move_assignable_v<key_type>)
+		insert_return_type emplace(key_type &&key, Args &&...args)
 		{
 			return emplace_impl(std::move(key), std::forward<Args>(args)...);
+		}
+
+		/**
+		 * @brief Insert a key-value pair into the map.
+		 * @param key Key to insert.
+		 * @param value Value to insert.
+		 * @return insert_return_type containing pointers to key and value, and insertion status.
+		 */
+		insert_return_type insert(const key_type &key, const mapped_type &value)
+		{
+			return emplace(key, value);
+		}
+
+		/**
+		 * @brief Insert a key-value pair into the map (move semantics).
+		 * @param key Key to insert.
+		 * @param value Value to insert (moved).
+		 * @return insert_return_type containing pointers to key and value, and insertion status.
+		 */
+		insert_return_type insert(const key_type &key, mapped_type &&value)
+		{
+			return emplace(key, std::move(value));
 		}
 
 		/**
@@ -184,35 +751,14 @@ namespace ach
 		 * @param key Key to erase.
 		 * @return Number of elements erased (0 or 1).
 		 */
-		std::size_t erase(const key_type &key)
+		size_type erase(const key_type &key)
 		{
-			std::size_t h = find_bucket(key);
-			if (h == npos)
+			size_type idx = find_index(key);
+			if (idx == capacity)
 				return 0;
 
-			std::size_t idx = buckets[h];
-
-			if constexpr (!std::is_trivially_destructible_v<mapped_type>)
-				values[idx].~mapped_type();
-
-			states[idx] = slot_state::deleted;
-			buckets[h] = tombstone;
-			slot_freelist.emplace(idx);
-			--occupied_count;
-
+			erase_at(idx);
 			return 1;
-		}
-
-		/**
-		 * @brief Erase an element by key (heterogeneous lookup).
-		 * @tparam K Key type convertible to key_type.
-		 * @param x Key to erase.
-		 * @return Number of elements erased (0 or 1).
-		 */
-		template<typename K>
-		std::size_t erase(K &&x)
-		{
-			return erase(static_cast<const key_type &>(x));
 		}
 
 		/**
@@ -222,10 +768,8 @@ namespace ach
 		 */
 		mapped_type *find(const key_type &key) noexcept
 		{
-			std::size_t h = find_bucket(key);
-			if (h == npos)
-				return nullptr;
-			return &values[buckets[h]];
+			size_type idx = find_index(key);
+			return idx != capacity ? &values[idx] : nullptr;
 		}
 
 		/**
@@ -235,167 +779,128 @@ namespace ach
 		 */
 		const mapped_type *find(const key_type &key) const noexcept
 		{
-			std::size_t h = find_bucket(key);
-			if (h == npos)
-				return nullptr;
-			return &values[buckets[h]];
+			size_type idx = find_index(key);
+			return idx != capacity ? &values[idx] : nullptr;
 		}
 
 		/**
-		 * @brief Find an element by key (heterogeneous lookup).
-		 * @tparam K Key type convertible to key_type.
-		 * @param key Key to search for.
-		 * @return Pointer to the mapped value, or nullptr if not found.
+		 * @brief Get reference to value, inserting default if not present.
+		 * @param key Key to find or insert.
+		 * @return Reference to the mapped value.
 		 */
-		template<typename K>
-		mapped_type *find(const K &key) noexcept
-			requires std::convertible_to<K, key_type>
+		mapped_type &operator[](const key_type &key)
 		{
-			return find(static_cast<const key_type &>(key));
+			auto result = emplace(key);
+			return *result.second;
 		}
 
 		/**
-		 * @brief Find an element by key (const heterogeneous lookup).
-		 * @tparam K Key type convertible to key_type.
-		 * @param key Key to search for.
-		 * @return Const pointer to the mapped value, or nullptr if not found.
+		 * @brief Get reference to value, inserting default if not present (rvalue key).
+		 * @param key Key to find or insert (moved if new).
+		 * @return Reference to the mapped value.
 		 */
-		template<typename K>
-		const mapped_type *find(const K &key) const noexcept
-			requires std::convertible_to<K, key_type>
+		mapped_type &operator[](key_type &&key)
 		{
-			return find(static_cast<const key_type &>(key));
+			auto result = emplace(std::move(key));
+			return *result.second;
+		}
+
+		/**
+		 * @brief Check if a key exists in the map.
+		 * @param key Key to search for.
+		 * @return True if key exists, false otherwise.
+		 */
+		bool contains(const key_type &key) const noexcept
+		{
+			return find_index(key) != capacity;
+		}
+
+		/**
+		 * @brief Get iterator to the beginning.
+		 * @return Iterator to the first element.
+		 */
+		iterator begin() noexcept
+		{
+			size_type idx = 0;
+			while (idx < capacity && !is_occupied(idx))
+				++idx;
+			return iterator(this, idx);
+		}
+
+		/**
+		 * @brief Get const iterator to the beginning.
+		 * @return Const iterator to the first element.
+		 */
+		const_iterator begin() const noexcept
+		{
+			size_type idx = 0;
+			while (idx < capacity && !is_occupied(idx))
+				++idx;
+			return const_iterator(this, idx);
+		}
+
+		/**
+		 * @brief Get const iterator to the beginning.
+		 * @return Const iterator to the first element.
+		 */
+		const_iterator cbegin() const noexcept
+		{
+			return begin();
+		}
+
+		/**
+		 * @brief Get iterator to the end.
+		 * @return Iterator to one past the last element.
+		 */
+		iterator end() noexcept
+		{
+			return iterator(this, capacity);
+		}
+
+		/**
+		 * @brief Get const iterator to the end.
+		 * @return Const iterator to one past the last element.
+		 */
+		const_iterator end() const noexcept
+		{
+			return const_iterator(this, capacity);
+		}
+
+		/**
+		 * @brief Get const iterator to the end.
+		 * @return Const iterator to one past the last element.
+		 */
+		const_iterator cend() const noexcept
+		{
+			return end();
 		}
 
 		/**
 		 * @brief Swap contents with another unique_map.
 		 * @param other Map to swap with.
 		 */
-		void swap(unique_map &other) noexcept(std::allocator_traits<allocator_type>::is_always_equal::value &&
-																					std::is_nothrow_swappable_v<hasher> && std::is_nothrow_swappable_v<key_equal>)
+		void swap(unique_map &other) noexcept
 		{
 			using std::swap;
 			swap(hash_function, other.hash_function);
 			swap(key_eq, other.key_eq);
 			swap(allocator, other.allocator);
-			swap(buckets, other.buckets);
-			swap(key_ptrs, other.key_ptrs);
+			swap(metadata, other.metadata);
+			swap(keys, other.keys);
 			swap(values, other.values);
-			swap(states, other.states);
-			swap(key_storage, other.key_storage);
-			swap(slot_freelist, other.slot_freelist);
+			swap(capacity, other.capacity);
 			swap(occupied_count, other.occupied_count);
 		}
-
-	private:
-		static constexpr size_type next_power_of_2(size_type n) noexcept
-		{
-			if (n <= 16)
-				return 16;
-			--n;
-			n |= n >> 1;
-			n |= n >> 2;
-			n |= n >> 4;
-			n |= n >> 8;
-			n |= n >> 16;
-			n |= n >> 32;
-			return ++n;
-		}
-
-		std::size_t find_bucket(const key_type &key) const noexcept
-		{
-			if (buckets.empty())
-				return npos;
-
-			std::size_t h = hash_function(key);
-			std::size_t mask = buckets.size() - 1;
-			std::size_t idx = h & mask;
-			while (buckets[idx] != npos)
-			{
-				if (buckets[idx] != tombstone)
-				{
-					std::size_t slot = buckets[idx];
-					if (states[slot] == slot_state::occupied && key_eq(*key_ptrs[idx], key))
-						return h;
-				}
-				idx = (idx + 1) & mask;
-			}
-			return npos;
-		}
-
-		template<typename KeyArg, typename... Args>
-		insert_return_type emplace_impl(KeyArg &&key,
-																		Args &&...args) noexcept(std::is_nothrow_constructible_v<key_type, KeyArg> &&
-																														 std::is_nothrow_constructible_v<mapped_type, Args...> &&
-																														 std::is_nothrow_assignable_v<key_type &, KeyArg>)
-		{
-			if (should_rehash())
-				rehash(buckets.size() * 2);
-
-			std::size_t mask = buckets.size() - 1;
-			std::size_t h = hash_function(key) & mask;
-			while (buckets[h] != npos && buckets[h] != tombstone)
-			{
-				std::size_t idx = buckets[h];
-				if (states[idx] == slot_state::occupied && key_eq(*key_ptrs[idx], key))
-					return { key_ptrs[idx], &values[idx], false };
-				h = (h + 1) & mask;
-			}
-
-			std::size_t idx;
-			key_type *key_ptr;
-
-			if (!slot_freelist.empty())
-			{
-				std::size_t *idx_storage = slot_freelist.pop()->value();
-				idx = *idx_storage;
-				slot_freelist.push(reinterpret_cast<freelist<std::size_t>::node_type *>(idx_storage));
-
-				key_ptr = key_ptrs[idx];
-				*key_ptr = std::forward<KeyArg>(key);
-				::new (&values[idx]) mapped_type(std::forward<Args>(args)...);
-			}
-			else
-			{
-				idx = values.size();
-				key_ptr = key_storage.emplace(std::forward<KeyArg>(key));
-				key_ptrs.push_back(key_ptr);
-				values.emplace_back(std::forward<Args>(args)...);
-				states.push_back(slot_state::occupied);
-			}
-
-			states[idx] = slot_state::occupied;
-			buckets[h] = idx;
-			++occupied_count;
-
-			return { key_ptr, &values[idx], true };
-		}
-
-		[[nodiscard]] bool should_rehash() const noexcept
-		{
-			if (buckets.empty())
-				return true;
-			return static_cast<double>(occupied_count) > 0.75 * buckets.size();
-		}
-
-		void rehash(std::size_t new_bucket_count)
-		{
-			new_bucket_count = next_power_of_2(new_bucket_count);
-			std::size_t mask = new_bucket_count - 1;
-			std::vector<std::size_t> new_buckets(new_bucket_count, npos);
-
-			for (std::size_t i = 0; i < states.size(); ++i)
-			{
-				if (states[i] == slot_state::occupied)
-				{
-					std::size_t h = hash_function(*key_ptrs[i]) & mask;
-					while (new_buckets[h] != npos)
-						h = (h + 1) & mask;
-					new_buckets[h] = i;
-				}
-			}
-
-			buckets.swap(new_buckets);
-		}
 	};
-} // namespace ach
+
+	/**
+	 * @brief Swap two unique_maps.
+	 */
+	template<typename Key, typename Value, typename Hash, typename KeyEqual, typename Allocator>
+	void swap(unique_map<Key, Value, Hash, KeyEqual, Allocator> &lhs,
+						unique_map<Key, Value, Hash, KeyEqual, Allocator> &rhs) noexcept
+	{
+		lhs.swap(rhs);
+	}
+
+} /* namespace ach */

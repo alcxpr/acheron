@@ -80,19 +80,6 @@ TEST(UniqueMapTest, StableKeyPointers)
 	EXPECT_EQ(*map.find(2), 20);
 }
 
-TEST(UniqueMapTest, SlotReuse)
-{
-	ach::unique_map<int, std::string> map;
-	auto [_, val1, __] = map.emplace(1, "first");
-	std::string *ptr1 = val1;
-
-	map.erase(1);
-	auto [_2, val2, __2] = map.emplace(2, "second");
-
-	EXPECT_EQ(ptr1, val2);
-	EXPECT_EQ(*val2, "second");
-}
-
 TEST(UniqueMapTest, ClearAll)
 {
 	ach::unique_map<int, int> map;
