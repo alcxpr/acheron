@@ -153,14 +153,15 @@ TEST(CounterTest, ThreadSafetyIncrement)
 	std::vector<std::thread> threads;
 	for (int i = 0; i < num_threads; ++i)
 	{
-		threads.emplace_back([&c]()
-		{
-			for (int j = 0; j < increments_per_thread; ++j)
-				++c;
-		});
+		threads.emplace_back(
+						[&c]()
+						{
+							for (int j = 0; j < increments_per_thread; ++j)
+								++c;
+						});
 	}
 
-	for (auto &t : threads)
+	for (auto &t: threads)
 		t.join();
 
 	EXPECT_EQ(c.load(), num_threads * increments_per_thread);
@@ -175,14 +176,15 @@ TEST(CounterTest, ThreadSafetyDecrement)
 	std::vector<std::thread> threads;
 	for (int i = 0; i < num_threads; ++i)
 	{
-		threads.emplace_back([&c]()
-		{
-			for (int j = 0; j < decrements_per_thread; ++j)
-				--c;
-		});
+		threads.emplace_back(
+						[&c]()
+						{
+							for (int j = 0; j < decrements_per_thread; ++j)
+								--c;
+						});
 	}
 
-	for (auto &t : threads)
+	for (auto &t: threads)
 		t.join();
 
 	EXPECT_EQ(c.load(), 0);
@@ -197,22 +199,23 @@ TEST(CounterTest, ThreadSafetyMixed)
 	std::vector<std::thread> threads;
 	for (int i = 0; i < num_threads; ++i)
 	{
-		threads.emplace_back([&c, i]()
-		{
-			if (i % 2 == 0)
-			{
-				for (int j = 0; j < ops_per_thread; ++j)
-					c += 2;
-			}
-			else
-			{
-				for (int j = 0; j < ops_per_thread; ++j)
-					c -= 1;
-			}
-		});
+		threads.emplace_back(
+						[&c, i]()
+						{
+							if (i % 2 == 0)
+							{
+								for (int j = 0; j < ops_per_thread; ++j)
+									c += 2;
+							}
+							else
+							{
+								for (int j = 0; j < ops_per_thread; ++j)
+									c -= 1;
+							}
+						});
 	}
 
-	for (auto &t : threads)
+	for (auto &t: threads)
 		t.join();
 
 	int expected = (num_threads / 2) * ops_per_thread * 2 - (num_threads / 2) * ops_per_thread;
@@ -222,15 +225,15 @@ TEST(CounterTest, ThreadSafetyMixed)
 TEST(ResourceTest, Construction)
 {
 	auto r = ach::make_resource(42);
-	auto& ref = ach::borrow(r);
+	auto &ref = ach::borrow(r);
 	EXPECT_EQ(ref, 42);
 }
 
 TEST(ResourceTest, DeductionGuide)
 {
-	[[maybe_unused]] ach::resource r1 { 42 };
-	[[maybe_unused]] ach::resource r2 { 3.142 };
-	[[maybe_unused]] ach::resource r3 { std::string("skibidi toilet") };
+	[[maybe_unused]] ach::resource r1{ 42 };
+	[[maybe_unused]] ach::resource r2{ 3.142 };
+	[[maybe_unused]] ach::resource r3{ std::string("skibidi toilet") };
 
 	static_assert(std::is_same_v<decltype(r1)::value_type, int>);
 	static_assert(std::is_same_v<decltype(r2)::value_type, double>);
@@ -240,9 +243,9 @@ TEST(ResourceTest, DeductionGuide)
 TEST(ResourceTest, MutableBorrow)
 {
 	auto r = ach::make_resource(10);
-	auto& ref = ach::borrow(r);
+	auto &ref = ach::borrow(r);
 
-	static_assert(std::is_same_v<decltype(ref), int&>);
+	static_assert(std::is_same_v<decltype(ref), int &>);
 	EXPECT_EQ(ref, 10);
 
 	ref = 20;
@@ -252,19 +255,19 @@ TEST(ResourceTest, MutableBorrow)
 TEST(ResourceTest, ConstBorrow)
 {
 	auto r = ach::make_resource(42);
-	const auto& cr = r;
-	const auto& cref = ach::borrow(cr);
+	const auto &cr = r;
+	const auto &cref = ach::borrow(cr);
 
-	static_assert(std::is_same_v<decltype(cref), const int&>);
+	static_assert(std::is_same_v<decltype(cref), const int &>);
 	EXPECT_EQ(cref, 42);
 }
 
 TEST(ResourceTest, RvalueBorrow)
 {
 	auto r = ach::make_resource(99);
-	int&& moved = ach::borrow(std::move(r));
+	int &&moved = ach::borrow(std::move(r));
 
-	static_assert(std::is_same_v<decltype(moved), int&&>);
+	static_assert(std::is_same_v<decltype(moved), int &&>);
 	EXPECT_EQ(moved, 99);
 }
 
@@ -300,7 +303,7 @@ TEST(ResourceTest, MoveOnly)
 TEST(ResourceTest, ComplexType)
 {
 	auto r = ach::make_resource(std::string("ownership"));
-	auto& str = ach::borrow(r);
+	auto &str = ach::borrow(r);
 
 	EXPECT_EQ(str, "ownership");
 	str += " model";
@@ -310,7 +313,7 @@ TEST(ResourceTest, ComplexType)
 TEST(ResourceTest, OwnershipTransfer)
 {
 	auto r1 = ach::make_resource(std::string("data"));
-	std::string&& moved = ach::borrow(std::move(r1));
+	std::string &&moved = ach::borrow(std::move(r1));
 
 	auto r2 = ach::make_resource(std::move(moved));
 	EXPECT_EQ(ach::borrow(r2), "data");

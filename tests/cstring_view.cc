@@ -1,11 +1,11 @@
 /* this file is part of the Acheron library project, licensed under the MIT license. see `LICENSE.txt` for details */
 
 #include <acheron/cstring_view.hpp>
+#include <format>
 #include <gtest/gtest.h>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <format>
 
 using namespace ach::literals;
 
@@ -20,7 +20,7 @@ TEST(CStringViewTest, DefaultConstruction)
 
 TEST(CStringViewTest, ConstructFromCString)
 {
-	const char* str = "hello";
+	const char *str = "hello";
 	ach::cstring_view csv(str);
 	EXPECT_EQ(csv.size(), 5u);
 	EXPECT_FALSE(csv.empty());
@@ -67,7 +67,7 @@ TEST(CStringViewTest, Iterators)
 {
 	ach::cstring_view csv("test");
 	std::string result;
-	for (auto c : csv)
+	for (auto c: csv)
 		result += c;
 	EXPECT_EQ(result, "test");
 }
@@ -103,7 +103,7 @@ TEST(CStringViewTest, ElementAccessAt)
 
 TEST(CStringViewTest, DataAndCStr)
 {
-	const char* str = "data test";
+	const char *str = "data test";
 	ach::cstring_view csv(str);
 	EXPECT_EQ(csv.data(), str);
 	EXPECT_EQ(csv.c_str(), str);
@@ -369,7 +369,7 @@ TEST(CStringViewTest, RangeBasedFor)
 {
 	ach::cstring_view csv("loop");
 	std::vector<char> chars;
-	for (char c : csv)
+	for (char c: csv)
 		chars.push_back(c);
 	EXPECT_EQ(chars.size(), 4u);
 	EXPECT_EQ(chars[0], 'l');

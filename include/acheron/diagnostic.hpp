@@ -14,7 +14,7 @@
 
 /* default to colored output unless explicitly disabled */
 #ifndef ACHERON_COLORED_DIAGNOSTICS
-	#define ACHERON_COLORED_DIAGNOSTICS 1
+#define ACHERON_COLORED_DIAGNOSTICS 1
 #endif
 
 namespace ach
@@ -22,15 +22,15 @@ namespace ach
 	namespace d
 	{
 		/* ANSI color codes */
-		inline constexpr const char* reset = "\033[0m";
-		inline constexpr const char* bold_red = "\033[1;31m";
-		inline constexpr const char* bold_yellow = "\033[1;33m";
-		inline constexpr const char* bold_blue = "\033[1;34m";
-		inline constexpr const char* dim_gray = "\033[90m";
-		inline constexpr const char* bold_cyan = "\033[1;36m";
+		inline constexpr const char *reset = "\033[0m";
+		inline constexpr const char *bold_red = "\033[1;31m";
+		inline constexpr const char *bold_yellow = "\033[1;33m";
+		inline constexpr const char *bold_blue = "\033[1;34m";
+		inline constexpr const char *dim_gray = "\033[90m";
+		inline constexpr const char *bold_cyan = "\033[1;36m";
 
 		/* return color code if enabled, empty string otherwise */
-		constexpr const char* c(const char* code)
+		constexpr const char *c(const char *code)
 		{
 #if ACHERON_COLORED_DIAGNOSTICS
 			return code;
@@ -38,7 +38,7 @@ namespace ach
 			return "";
 #endif
 		}
-	}
+	} // namespace d
 
 	/**
 	 * @brief Exception class for fatal, unrecoverable errors
@@ -79,8 +79,8 @@ namespace ach
 		 *
 		 * @note Immediately prints diagnostic information to stderr upon construction
 		 */
-		explicit fatal_error(std::string message, std::source_location location = std::source_location::current())
-			: msg(std::move(message)), loc(location)
+		explicit fatal_error(std::string message, std::source_location location = std::source_location::current()) :
+				msg(std::move(message)), loc(location)
 		{
 			print_diagnostic();
 		}
@@ -89,7 +89,7 @@ namespace ach
 		 * @brief Returns the error message
 		 * @return C-string containing the error message
 		 */
-		[[nodiscard]] const char* what() const noexcept override
+		[[nodiscard]] const char *what() const noexcept override
 		{
 			return msg.c_str();
 		}
@@ -98,7 +98,7 @@ namespace ach
 		 * @brief Returns the source location where the error occurred
 		 * @return Source location information
 		 */
-		[[nodiscard]] const std::source_location& location() const noexcept
+		[[nodiscard]] const std::source_location &location() const noexcept
 		{
 			return loc;
 		}
@@ -110,7 +110,8 @@ namespace ach
 		void print_diagnostic() const
 		{
 			std::cerr << "\n" << d::c(d::bold_red) << "[FATAL]" << d::c(d::reset) << " " << msg << "\n";
-			std::cerr << d::c(d::reset) << loc.file_name() << ":" << loc.line() << ":" << loc.column() << d::c(d::reset) << "\n";
+			std::cerr << d::c(d::reset) << loc.file_name() << ":" << loc.line() << ":" << loc.column() << d::c(d::reset)
+								<< "\n";
 			std::cerr << d::c(d::reset) << "in " << loc.function_name() << d::c(d::reset) << "\n";
 
 #ifndef NDEBUG
@@ -146,12 +147,14 @@ namespace ach
 	 * @note This function always checks the condition regardless of build type.
 	 * Only the stack trace capture is conditional on NDEBUG.
 	 */
-	inline void expect(bool condition, std::string_view message, std::source_location location = std::source_location::current())
+	inline void expect(bool condition, std::string_view message,
+										 std::source_location location = std::source_location::current())
 	{
 		if (!condition) [[unlikely]]
 		{
 			std::cerr << "\n" << d::c(d::bold_red) << "[ASSERT]" << d::c(d::reset) << " " << message << "\n";
-			std::cerr << d::c(d::dim_gray) << location.file_name() << ":" << location.line() << ":" << location.column() << d::c(d::reset) << "\n";
+			std::cerr << d::c(d::dim_gray) << location.file_name() << ":" << location.line() << ":" << location.column()
+								<< d::c(d::reset) << "\n";
 			std::cerr << d::c(d::dim_gray) << "in " << location.function_name() << d::c(d::reset) << "\n";
 
 #ifndef NDEBUG
@@ -164,31 +167,30 @@ namespace ach
 	}
 
 	/**
-	* @brief Debug-only assertion that is compiled out in release builds
-	* @param condition Condition to check
-	* @param message Pre-formatted error message by caller
-	* @param location Auto-captured source location
-	*
-	* @details
-	* Behaves like `ach::assert()` in debug builds (NDEBUG not defined),
-	* but becomes a no-op in release builds for zero runtime overhead.
-	* Use this for performance-critical hot paths where the check has
-	* measurable impact but still want validation during development.
-	*
-	* @par Example
-	* @code
-	* void foo(int* ptr, std::size_t size)
-	* {
-	*     ach::debug_assert(ptr != nullptr, "pointer is null");
-	*     ach::debug_assert(size > 0, std::format("invalid size: {}", size));
-	* }
-	* @endcode
-	*
-	* @note For library invariants that should always be checked, use `ach::assert()` instead.
-	*/
-	inline void debug_assert([[maybe_unused]] bool condition,
-							[[maybe_unused]] std::string_view message,
-							[[maybe_unused]] std::source_location location = std::source_location::current())
+	 * @brief Debug-only assertion that is compiled out in release builds
+	 * @param condition Condition to check
+	 * @param message Pre-formatted error message by caller
+	 * @param location Auto-captured source location
+	 *
+	 * @details
+	 * Behaves like `ach::assert()` in debug builds (NDEBUG not defined),
+	 * but becomes a no-op in release builds for zero runtime overhead.
+	 * Use this for performance-critical hot paths where the check has
+	 * measurable impact but still want validation during development.
+	 *
+	 * @par Example
+	 * @code
+	 * void foo(int* ptr, std::size_t size)
+	 * {
+	 *     ach::debug_assert(ptr != nullptr, "pointer is null");
+	 *     ach::debug_assert(size > 0, std::format("invalid size: {}", size));
+	 * }
+	 * @endcode
+	 *
+	 * @note For library invariants that should always be checked, use `ach::assert()` instead.
+	 */
+	inline void debug_assert([[maybe_unused]] bool condition, [[maybe_unused]] std::string_view message,
+													 [[maybe_unused]] std::source_location location = std::source_location::current())
 	{
 #if defined(DEBUG) || !defined(NDEBUG)
 		::ach::expect(condition, message, location);
@@ -221,7 +223,8 @@ namespace ach
 	 * }
 	 * @endcode
 	 */
-	[[noreturn]] inline void panic(std::string_view message, std::source_location location = std::source_location::current())
+	[[noreturn]] inline void panic(std::string_view message,
+																 std::source_location location = std::source_location::current())
 	{
 		::ach::expect(false, message, location);
 		std::unreachable();
@@ -249,7 +252,8 @@ namespace ach
 	inline void warn(std::string_view message, std::source_location location = std::source_location::current())
 	{
 		std::cerr << d::c(d::bold_yellow) << "[WARN]" << d::c(d::reset) << " " << message;
-		std::cerr << " " << d::c(d::dim_gray) << "(" << location.file_name() << ":" << location.line() << ")" << d::c(d::reset) << "\n";
+		std::cerr << " " << d::c(d::dim_gray) << "(" << location.file_name() << ":" << location.line() << ")"
+							<< d::c(d::reset) << "\n";
 	}
 
 	/**
@@ -275,7 +279,8 @@ namespace ach
 	inline void info(std::string_view message, std::source_location location = std::source_location::current())
 	{
 		std::cerr << d::c(d::bold_blue) << "[INFO]" << d::c(d::reset) << " " << message;
-		std::cerr << " " << d::c(d::dim_gray) << "(" << location.file_name() << ":" << location.line() << ")" << d::c(d::reset) << "\n";
+		std::cerr << " " << d::c(d::dim_gray) << "(" << location.file_name() << ":" << location.line() << ")"
+							<< d::c(d::reset) << "\n";
 	}
 
 	/**
@@ -298,21 +303,23 @@ namespace ach
 	 * }
 	 * @endcode
 	 */
-	inline void debug([[maybe_unused]] std::string_view message, [[maybe_unused]] std::source_location location = std::source_location::current())
+	inline void debug([[maybe_unused]] std::string_view message,
+										[[maybe_unused]] std::source_location location = std::source_location::current())
 	{
 #if defined(DEBUG) || !defined(NDEBUG)
-        std::cerr << d::c(d::bold_cyan) << "[DEBUG]" << d::c(d::reset) << " " << message;
-		std::cerr << " " << d::c(d::dim_gray) << "(" << location.file_name() << ":" << location.line() << ")" << d::c(d::reset) << "\n";
+		std::cerr << d::c(d::bold_cyan) << "[DEBUG]" << d::c(d::reset) << " " << message;
+		std::cerr << " " << d::c(d::dim_gray) << "(" << location.file_name() << ":" << location.line() << ")"
+							<< d::c(d::reset) << "\n";
 #endif
 	}
-}
+} // namespace ach
 
 /* macro alias for shorthand uses */
-#define ACH_ASSERT(cond, msg)         ::ach::assert((cond), (msg), std::source_location::current())
-#define ACH_PANIC(msg)                ::ach::panic((msg), std::source_location::current())
-#define ACH_WARN(msg)                 ::ach::warn((msg), std::source_location::current())
-#define ACH_INFO(msg)                 ::ach::info((msg), std::source_location::current())
-#define ACH_DEBUG(msg)                ::ach::debug((msg), std::source_location::current())
-#define ACH_UNREACHABLE()             ::ach::panic("unreachable code reached", std::source_location::current())
-#define ACH_TODO(msg)                 ::ach::panic(std::format("TODO: {}", (msg)), std::source_location::current())
-#define ACH_DEBUG_ASSERT(cond, msg)   ::ach::debug_assert((cond), (msg), std::source_location::current())
+#define ACH_ASSERT(cond, msg) ::ach::assert((cond), (msg), std::source_location::current())
+#define ACH_PANIC(msg) ::ach::panic((msg), std::source_location::current())
+#define ACH_WARN(msg) ::ach::warn((msg), std::source_location::current())
+#define ACH_INFO(msg) ::ach::info((msg), std::source_location::current())
+#define ACH_DEBUG(msg) ::ach::debug((msg), std::source_location::current())
+#define ACH_UNREACHABLE() ::ach::panic("unreachable code reached", std::source_location::current())
+#define ACH_TODO(msg) ::ach::panic(std::format("TODO: {}", (msg)), std::source_location::current())
+#define ACH_DEBUG_ASSERT(cond, msg) ::ach::debug_assert((cond), (msg), std::source_location::current())

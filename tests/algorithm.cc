@@ -31,12 +31,12 @@ TEST(AlgorithmTest, EnumerateRanges)
 	std::size_t count = 0;
 
 	ach::ranges::enumerate(vec,
-						   [&](std::size_t i, const std::string &s)
-						   {
-							   EXPECT_EQ(i, count);
-							   EXPECT_EQ(s, vec[i]);
-							   ++count;
-						   });
+												 [&](std::size_t i, const std::string &s)
+												 {
+													 EXPECT_EQ(i, count);
+													 EXPECT_EQ(s, vec[i]);
+													 ++count;
+												 });
 
 	EXPECT_EQ(count, 3u);
 }
@@ -68,11 +68,11 @@ TEST(AlgorithmTest, EnumerateArray)
 	int sum_values = 0;
 
 	ach::ranges::enumerate(arr,
-						   [&](std::size_t i, int value)
-						   {
-							   sum_indices += i;
-							   sum_values += value;
-						   });
+												 [&](std::size_t i, int value)
+												 {
+													 sum_indices += i;
+													 sum_values += value;
+												 });
 
 	EXPECT_EQ(sum_indices, 0u + 1u + 2u + 3u);
 	EXPECT_EQ(sum_values, 1000);
@@ -424,12 +424,12 @@ TEST(AlgorithmTest, EnumerateLargeRange)
 	std::size_t count = 0;
 
 	ach::ranges::enumerate(vec,
-						   [&](std::size_t i, int value)
-						   {
-							   EXPECT_EQ(i, count);
-							   EXPECT_EQ(value, 42);
-							   ++count;
-						   });
+												 [&](std::size_t i, int value)
+												 {
+													 EXPECT_EQ(i, count);
+													 EXPECT_EQ(value, 42);
+													 ++count;
+												 });
 
 	EXPECT_EQ(count, 1000u);
 }
@@ -482,7 +482,6 @@ TEST(AlgorithmTest, IsSortedUntilIndexStability)
 
 	std::vector<value> vec = { { 1, 100 }, { 2, 200 }, { 2, 300 }, { 3, 400 } };
 
-	auto idx = ach::ranges::is_sorted_until_index(vec,
-		[](auto const& a, auto const& b){ return a.key < b.key; });
+	auto idx = ach::ranges::is_sorted_until_index(vec, [](auto const &a, auto const &b) { return a.key < b.key; });
 	EXPECT_EQ(idx, vec.size());
 }

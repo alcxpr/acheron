@@ -201,17 +201,17 @@ TEST(AllocatorTest, SharedPolicyConcurrentAllocation)
 	for (int t = 0; t < num_threads; ++t)
 	{
 		threads.emplace_back(
-				[&, t]()
-				{
-					for (int i = 0; i < allocs_per_thread; ++i)
-					{
-						int *ptr = alloc.allocate(10);
-						ASSERT_NE(ptr, nullptr);
-						for (int j = 0; j < 10; ++j)
-							ptr[j] = t * 10000 + i * 10 + j;
-						thread_ptrs[t].push_back(ptr);
-					}
-				});
+						[&, t]()
+						{
+							for (int i = 0; i < allocs_per_thread; ++i)
+							{
+								int *ptr = alloc.allocate(10);
+								ASSERT_NE(ptr, nullptr);
+								for (int j = 0; j < 10; ++j)
+									ptr[j] = t * 10000 + i * 10 + j;
+								thread_ptrs[t].push_back(ptr);
+							}
+						});
 	}
 
 	for (auto &thread: threads)

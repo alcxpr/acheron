@@ -30,7 +30,7 @@ int main()
 		std::cout << "  " << arg << '\n';
 
 	std::cout << "\nReverse iterator test:\n";
-	for (auto arg : std::ranges::reverse_view(args))
+	for (auto arg: std::ranges::reverse_view(args))
 		std::cout << "  " << arg << '\n';
 
 	std::cout << "\nComparison test:\n";
@@ -73,7 +73,7 @@ int main()
 
 	std::cout << "\nAlgorithm test:\n";
 	auto it = std::ranges::find_if(args, [](const ach::argument &arg)
-								   { return arg.string().find("test") != std::string::npos; });
+																 { return arg.string().find("test") != std::string::npos; });
 	if (it != args.end())
 		std::cout << "  Found argument containing 'test': " << *it << '\n';
 	else

@@ -101,7 +101,7 @@ namespace ach
 		 */
 		template<typename Traits2, typename Allocator>
 		constexpr basic_cstring_view(const std::basic_string<CharT, Traits2, Allocator> &str) :
-			basic_cstring_view(str.c_str(), str.size())
+				basic_cstring_view(str.c_str(), str.size())
 		{}
 
 		/** @brief Returns iterator to the beginning */
@@ -291,8 +291,7 @@ namespace ach
 		 * @param n Length of substring (npos for entire remaining string)
 		 * @return string_view of the substring
 		 */
-		[[nodiscard]] constexpr std::basic_string_view<CharT, Traits> substr(size_type pos = 0,
-																			 size_type n = npos) const
+		[[nodiscard]] constexpr std::basic_string_view<CharT, Traits> substr(size_type pos = 0, size_type n = npos) const
 		{
 			return std::basic_string_view<CharT, Traits>(*this).substr(pos, n);
 		}
@@ -306,16 +305,15 @@ namespace ach
 		/** @brief Compares substring with another cstring_view */
 		[[nodiscard]] constexpr int compare(size_type pos1, size_type n1, basic_cstring_view s) const
 		{
-			return std::basic_string_view<CharT, Traits>(*this).compare(pos1, n1,
-																		std::basic_string_view<CharT, Traits>(s));
+			return std::basic_string_view<CharT, Traits>(*this).compare(pos1, n1, std::basic_string_view<CharT, Traits>(s));
 		}
 
 		/** @brief Compares substring with substring of another cstring_view */
 		[[nodiscard]] constexpr int compare(size_type pos1, size_type n1, basic_cstring_view s, size_type pos2,
-											size_type n2) const
+																				size_type n2) const
 		{
-			return std::basic_string_view<CharT, Traits>(*this).compare(
-					pos1, n1, std::basic_string_view<CharT, Traits>(s), pos2, n2);
+			return std::basic_string_view<CharT, Traits>(*this).compare(pos1, n1, std::basic_string_view<CharT, Traits>(s),
+																																	pos2, n2);
 		}
 
 		/** @brief Compares with C string */
@@ -391,8 +389,7 @@ namespace ach
 		}
 
 		/** @brief Finds the first occurrence of substring */
-		[[nodiscard]] constexpr size_type find(std::basic_string_view<CharT, Traits> s,
-											   size_type pos = 0) const noexcept
+		[[nodiscard]] constexpr size_type find(std::basic_string_view<CharT, Traits> s, size_type pos = 0) const noexcept
 		{
 			return std::basic_string_view<CharT, Traits>(*this).find(s, pos);
 		}
@@ -417,7 +414,7 @@ namespace ach
 
 		/** @brief Finds the last occurrence of substring */
 		[[nodiscard]] constexpr size_type rfind(std::basic_string_view<CharT, Traits> s,
-												size_type pos = npos) const noexcept
+																						size_type pos = npos) const noexcept
 		{
 			return std::basic_string_view<CharT, Traits>(*this).rfind(s, pos);
 		}
@@ -442,7 +439,7 @@ namespace ach
 
 		/** @brief Finds first occurrence of any character from the given set */
 		[[nodiscard]] constexpr size_type find_first_of(std::basic_string_view<CharT, Traits> s,
-														size_type pos = 0) const noexcept
+																										size_type pos = 0) const noexcept
 		{
 			return std::basic_string_view<CharT, Traits>(*this).find_first_of(s, pos);
 		}
@@ -467,7 +464,7 @@ namespace ach
 
 		/** @brief Finds last occurrence of any character from the given set */
 		[[nodiscard]] constexpr size_type find_last_of(std::basic_string_view<CharT, Traits> s,
-													   size_type pos = npos) const noexcept
+																									 size_type pos = npos) const noexcept
 		{
 			return std::basic_string_view<CharT, Traits>(*this).find_last_of(s, pos);
 		}
@@ -492,7 +489,7 @@ namespace ach
 
 		/** @brief Finds first character not in the given set */
 		[[nodiscard]] constexpr size_type find_first_not_of(std::basic_string_view<CharT, Traits> s,
-															size_type pos = 0) const noexcept
+																												size_type pos = 0) const noexcept
 		{
 			return std::basic_string_view<CharT, Traits>(*this).find_first_not_of(s, pos);
 		}
@@ -517,7 +514,7 @@ namespace ach
 
 		/** @brief Finds last character not in the given set */
 		[[nodiscard]] constexpr size_type find_last_not_of(std::basic_string_view<CharT, Traits> s,
-														   size_type pos = npos) const noexcept
+																											 size_type pos = npos) const noexcept
 		{
 			return std::basic_string_view<CharT, Traits>(*this).find_last_not_of(s, pos);
 		}
@@ -542,7 +539,7 @@ namespace ach
 
 	private:
 		const_pointer dt; ///< Pointer to null-terminated character array
-		size_type sz;	  ///< Length of string (excluding null terminator)
+		size_type sz;			///< Length of string (excluding null terminator)
 	};
 
 	/** @brief Null-terminated string view of char */
@@ -563,7 +560,7 @@ namespace ach
 	/** @brief Equality comparison */
 	template<class charT, class traits>
 	constexpr bool operator==(basic_cstring_view<charT, traits> x,
-							  std::type_identity_t<basic_cstring_view<charT, traits>> y) noexcept
+														std::type_identity_t<basic_cstring_view<charT, traits>> y) noexcept
 	{
 		return std::basic_string_view<charT, traits>(x) == std::basic_string_view<charT, traits>(y);
 	}
@@ -571,7 +568,7 @@ namespace ach
 	/** @brief Three-way comparison */
 	template<class charT, class traits>
 	constexpr auto operator<=>(basic_cstring_view<charT, traits> x,
-							   std::type_identity_t<basic_cstring_view<charT, traits>> y) noexcept
+														 std::type_identity_t<basic_cstring_view<charT, traits>> y) noexcept
 	{
 		return std::basic_string_view<charT, traits>(x) <=> std::basic_string_view<charT, traits>(y);
 	}
@@ -579,7 +576,7 @@ namespace ach
 	/** @brief Stream insertion operator */
 	template<class charT, class traits>
 	std::basic_ostream<charT, traits> &operator<<(std::basic_ostream<charT, traits> &os,
-												  basic_cstring_view<charT, traits> str)
+																								basic_cstring_view<charT, traits> str)
 	{
 		return os << std::basic_string_view<charT, traits>(str);
 	}
@@ -642,9 +639,9 @@ namespace ach
 #else
 #pragma warning(pop)
 #endif
-		}
-	}
-}
+		} // namespace cstring_view_literals
+	} // namespace literals
+} // namespace ach
 
 namespace std::ranges
 {
@@ -653,7 +650,7 @@ namespace std::ranges
 
 	template<class charT, class traits>
 	inline constexpr bool enable_borrowed_range<ach::basic_cstring_view<charT, traits>> = true;
-}
+} // namespace std::ranges
 
 namespace std
 {
@@ -727,4 +724,4 @@ namespace std
 	private:
 		formatter<basic_string_view<charT, traits>, charT> sv_formatter;
 	};
-}
+} // namespace std

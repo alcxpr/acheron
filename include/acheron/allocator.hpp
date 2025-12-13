@@ -43,23 +43,23 @@ namespace ach
 		{
 		public:
 			static constexpr std::size_t arena_size = 32 * 1024 * 1024; ///< Size of each arena in bytes (32MB)
-			static constexpr std::size_t l2_per_l1 = 64; ///< Number of L2 bitmap words per L1 bitmap bit
+			static constexpr std::size_t l2_per_l1 = 64;								///< Number of L2 bitmap words per L1 bitmap bit
 
 		private:
 			template<typename T>
 			using maybe_atomic = std::conditional_t<P == allocation_policy::shared, std::atomic<T>, T>;
 
-			void *base_addr; ///< Base address of the arena memory region
-			std::size_t block_size; ///< Size of each block in bytes
-			std::uint8_t block_shift; ///< Log2(block_size) for fast division
-			std::size_t num_blocks; ///< Total number of blocks in this arena
+			void *base_addr;						 ///< Base address of the arena memory region
+			std::size_t block_size;			 ///< Size of each block in bytes
+			std::uint8_t block_shift;		 ///< Log2(block_size) for fast division
+			std::size_t num_blocks;			 ///< Total number of blocks in this arena
 			std::size_t usable_capacity; ///< Usable capacity
 			alignas(std::hardware_destructive_interference_size) maybe_atomic<std::size_t> bump_offset; ///< Bump offset
 			alignas(std::hardware_destructive_interference_size) maybe_atomic<std::size_t> alloc_count; ///> Alloc count
 
-			std::size_t l2_words; ///< Number of 64-bit words in L2 bitmap
-			std::size_t l1_bits; ///< Number of bits in L1 bitmap
-			std::size_t l1_words; ///< Number of 64-bit words in L1 bitmap
+			std::size_t l2_words;										///< Number of 64-bit words in L2 bitmap
+			std::size_t l1_bits;										///< Number of bits in L1 bitmap
+			std::size_t l1_words;										///< Number of 64-bit words in L1 bitmap
 			maybe_atomic<std::uint64_t> *l1_bitmap; ///< L1 bitmap
 			maybe_atomic<std::uint64_t> *l2_bitmap; ///< L2 bitmap
 
@@ -72,9 +72,7 @@ namespace ach
 			 * Allocates a 64MB region using `VirtualAlloc` or `mmap`.
 			 * Initializes bitmaps at the end of the arena to keep allocations contiguous.
 			 */
-			explicit arena(std::size_t block_sz) :
-				block_size(block_sz)
-				, block_shift(std::countr_zero(block_sz))
+			explicit arena(std::size_t block_sz) : block_size(block_sz), block_shift(std::countr_zero(block_sz))
 			{
 				if constexpr (P == allocation_policy::shared)
 				{
@@ -92,8 +90,7 @@ namespace ach
 				if (!base_addr)
 					throw std::bad_alloc();
 #else
-				base_addr = mmap(nullptr, arena_size, PROT_READ | PROT_WRITE,
-				                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+				base_addr = mmap(nullptr, arena_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 				if (base_addr == MAP_FAILED)
 					throw std::bad_alloc();
 #endif
@@ -158,8 +155,8 @@ namespace ach
 					while (offset < usable_capacity)
 					{
 						std::size_t new_offset = offset + block_size;
-						if (bump_offset.compare_exchange_weak(offset, new_offset,
-						                                      std::memory_order_acquire, std::memory_order_relaxed))
+						if (bump_offset.compare_exchange_weak(offset, new_offset, std::memory_order_acquire,
+																									std::memory_order_relaxed))
 						{
 							return static_cast<char *>(base_addr) + offset;
 						}
@@ -206,8 +203,8 @@ namespace ach
 				 *
 				 * return ptr >= base_addr && ptr < (static_cast<char *>(base_addr) + usable_capacity);
 				 */
-				std::size_t offset = static_cast<char*>(ptr) - static_cast<char*>(base_addr);
-    			return offset < usable_capacity;
+				std::size_t offset = static_cast<char *>(ptr) - static_cast<char *>(base_addr);
+				return offset < usable_capacity;
 			}
 
 			/**
@@ -305,8 +302,8 @@ namespace ach
 										break;
 
 									std::uint64_t new_word = l2_word & ~(1ULL << bit);
-									if (l2_bitmap[l2_idx].compare_exchange_weak(l2_word, new_word,
-										std::memory_order_release, std::memory_order_acquire))
+									if (l2_bitmap[l2_idx].compare_exchange_weak(l2_word, new_word, std::memory_order_release,
+																															std::memory_order_acquire))
 									{
 										if (new_word == 0)
 											update_l1_for_region(l1_index);
@@ -464,7 +461,7 @@ namespace ach
 				return std::bit_width(size - 1) - std::bit_width(min_size - 1);
 			}
 		};
-	}
+	} // namespace d
 
 	/**
 	 * @class arena_pool
@@ -497,8 +494,7 @@ namespace ach
 		 * @brief Constructs an empty arena pool
 		 * @param block_sz Block size for arenas in this pool
 		 */
-		explicit arena_pool(std::size_t block_sz) noexcept :
-			block_size(block_sz)
+		explicit arena_pool(std::size_t block_sz) noexcept : block_size(block_sz)
 		{
 			if constexpr (P == allocation_policy::shared)
 			{
@@ -601,20 +597,19 @@ namespace ach
 				if (expected >= max_arenas)
 					return nullptr;
 
-				if (num_arenas.compare_exchange_strong(expected, expected,
-				                                       std::memory_order_acq_rel, std::memory_order_acquire))
+				if (num_arenas.compare_exchange_strong(expected, expected, std::memory_order_acq_rel,
+																							 std::memory_order_acquire))
 				{
 #if defined(_WIN32) || defined(_WIN64)
-					void *arena_mem = VirtualAlloc(nullptr, sizeof(arena_type),
-					                               MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+					void *arena_mem = VirtualAlloc(nullptr, sizeof(arena_type), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 					if (!arena_mem)
 					{
 						num_arenas.fetch_sub(1, std::memory_order_release);
 						return nullptr;
 					}
 #else
-					void *arena_mem = mmap(nullptr, sizeof(arena_type),
-					                       PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+					void *arena_mem =
+									mmap(nullptr, sizeof(arena_type), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 					if (arena_mem == MAP_FAILED)
 					{
 						num_arenas.fetch_sub(1, std::memory_order_release);
@@ -622,8 +617,7 @@ namespace ach
 					}
 #endif
 
-					arenas[expected].store(new(arena_mem) arena_type(block_size),
-					                       std::memory_order_release);
+					arenas[expected].store(new (arena_mem) arena_type(block_size), std::memory_order_release);
 					current_arena.store(expected + 1, std::memory_order_release);
 
 					return arenas[expected].load(std::memory_order_acquire)->allocate();
@@ -636,20 +630,18 @@ namespace ach
 					return nullptr;
 
 #if defined(_WIN32) || defined(_WIN64)
-				void *arena_mem = VirtualAlloc(nullptr, sizeof(arena_type),
-				                               MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+				void *arena_mem = VirtualAlloc(nullptr, sizeof(arena_type), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 				if (!arena_mem)
 					return nullptr;
 
 #else
-				void *arena_mem = mmap(nullptr, sizeof(arena_type),
-				                       PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+				void *arena_mem = mmap(nullptr, sizeof(arena_type), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 				if (arena_mem == MAP_FAILED)
 					return nullptr;
 
 #endif
 
-				arenas[num] = new(arena_mem) arena_type(block_size);
+				arenas[num] = new (arena_mem) arena_type(block_size);
 				current_arena = num;
 				++num_arenas;
 
@@ -715,15 +707,13 @@ namespace ach
 					{
 						std::size_t size_class = d::size_class_manager::min_size << i;
 #if defined(_WIN32) || defined(_WIN64)
-						void *mem = VirtualAlloc(nullptr, sizeof(pool_type),
-						                         MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+						void *mem = VirtualAlloc(nullptr, sizeof(pool_type), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 						if (mem)
-							pools[i] = new(mem) pool_type(size_class);
+							pools[i] = new (mem) pool_type(size_class);
 #else
-						void *mem = mmap(nullptr, sizeof(pool_type),
-						                 PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+						void *mem = mmap(nullptr, sizeof(pool_type), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 						if (mem != MAP_FAILED)
-							pools[i] = new(mem) pool_type(size_class);
+							pools[i] = new (mem) pool_type(size_class);
 #endif
 					}
 					initialized = true;
@@ -742,7 +732,8 @@ namespace ach
 				}
 
 				while (init_lock.test_and_set(std::memory_order_acquire))
-				{}
+				{
+				}
 
 				if (!initialized.load(std::memory_order_relaxed))
 				{
@@ -750,15 +741,13 @@ namespace ach
 					{
 						std::size_t size_class = d::size_class_manager::min_size << i;
 #if defined(_WIN32) || defined(_WIN64)
-						void *mem = VirtualAlloc(nullptr, sizeof(pool_type),
-						                         MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+						void *mem = VirtualAlloc(nullptr, sizeof(pool_type), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 						if (mem)
-							pools[i] = new(mem) pool_type(size_class);
+							pools[i] = new (mem) pool_type(size_class);
 #else
-						void *mem = mmap(nullptr, sizeof(pool_type),
-						                 PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+						void *mem = mmap(nullptr, sizeof(pool_type), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 						if (mem != MAP_FAILED)
-							pools[i] = new(mem) pool_type(size_class);
+							pools[i] = new (mem) pool_type(size_class);
 #endif
 					}
 					initialized.store(true, std::memory_order_release);
@@ -773,7 +762,8 @@ namespace ach
 		allocator() noexcept = default;
 
 		template<typename U>
-		allocator(const allocator<U, P> &) noexcept {}
+		allocator(const allocator<U, P> &) noexcept
+		{}
 
 		[[nodiscard]] T *allocate(size_type n)
 		{
@@ -792,8 +782,7 @@ namespace ach
 				if (!ptr)
 					throw std::bad_alloc();
 #else
-				void *ptr = mmap(nullptr, bytes, PROT_READ | PROT_WRITE,
-				                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+				void *ptr = mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 				if (ptr == MAP_FAILED)
 					throw std::bad_alloc();
 #endif
@@ -847,4 +836,4 @@ namespace ach
 			return false;
 		}
 	};
-}
+} // namespace ach

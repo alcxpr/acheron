@@ -170,7 +170,7 @@ TEST(VariantTest, GetByType)
 	EXPECT_EQ(ach::get<int>(v), 42);
 	EXPECT_EQ(v.get<int>(), 42);
 
-	const auto& cv = v;
+	const auto &cv = v;
 	EXPECT_EQ(ach::get<int>(cv), 42);
 	EXPECT_EQ(cv.get<int>(), 42);
 }
@@ -181,7 +181,7 @@ TEST(VariantTest, GetByIndex)
 
 	EXPECT_EQ(ach::get<0>(v), 42);
 
-	const auto& cv = v;
+	const auto &cv = v;
 	EXPECT_EQ(ach::get<0>(cv), 42);
 }
 
@@ -198,15 +198,15 @@ TEST(VariantTest, GetIfByType)
 {
 	ach::variant<int, double, std::string> v{ 42 };
 
-	auto* int_ptr = ach::get_if<int>(&v);
+	auto *int_ptr = ach::get_if<int>(&v);
 	ASSERT_NE(int_ptr, nullptr);
 	EXPECT_EQ(*int_ptr, 42);
 
-	auto* int_ptr2 = v.get_if<int>();
+	auto *int_ptr2 = v.get_if<int>();
 	ASSERT_NE(int_ptr2, nullptr);
 	EXPECT_EQ(*int_ptr2, 42);
 
-	auto* str_ptr = ach::get_if<std::string>(&v);
+	auto *str_ptr = ach::get_if<std::string>(&v);
 	EXPECT_EQ(str_ptr, nullptr);
 }
 
@@ -214,11 +214,11 @@ TEST(VariantTest, GetIfByIndex)
 {
 	ach::variant<int, double, std::string> v{ 42 };
 
-	auto* int_ptr = ach::get_if<0>(&v);
+	auto *int_ptr = ach::get_if<0>(&v);
 	ASSERT_NE(int_ptr, nullptr);
 	EXPECT_EQ(*int_ptr, 42);
 
-	auto* double_ptr = ach::get_if<1>(&v);
+	auto *double_ptr = ach::get_if<1>(&v);
 	EXPECT_EQ(double_ptr, nullptr);
 }
 
@@ -236,7 +236,7 @@ TEST(VariantTest, EmplaceByType)
 {
 	ach::variant<int, std::string, std::vector<int>> v;
 
-	auto& str_ref = v.emplace<std::string>("constructed");
+	auto &str_ref = v.emplace<std::string>("constructed");
 
 	EXPECT_EQ(v.index(), 1);
 	EXPECT_EQ(ach::get<std::string>(v), "constructed");
@@ -248,7 +248,7 @@ TEST(VariantTest, EmplaceByIndex)
 {
 	ach::variant<int, std::string, std::vector<int>> v;
 
-	auto& vec_ref = v.emplace<2>(3, 42);
+	auto &vec_ref = v.emplace<2>(3, 42);
 
 	EXPECT_EQ(v.index(), 2);
 	EXPECT_EQ(ach::get<std::vector<int>>(v).size(), 3);
@@ -326,17 +326,19 @@ TEST(VariantTest, BasicVisit)
 {
 	ach::variant<int, double, std::string> v{ 42 };
 
-	auto result = ach::visit([](auto&& arg) -> std::string
-	{
-		using T = std::decay_t<decltype(arg)>;
-		if constexpr (std::is_same_v<T, int>)
-			return "int: " + std::to_string(arg);
-		else if constexpr (std::is_same_v<T, double>)
-			return "double: " + std::to_string(arg);
-		else if constexpr (std::is_same_v<T, std::string>)
-			return "string: " + arg;
-		return "";
-	}, v);
+	auto result = ach::visit(
+					[](auto &&arg) -> std::string
+					{
+						using T = std::decay_t<decltype(arg)>;
+						if constexpr (std::is_same_v<T, int>)
+							return "int: " + std::to_string(arg);
+						else if constexpr (std::is_same_v<T, double>)
+							return "double: " + std::to_string(arg);
+						else if constexpr (std::is_same_v<T, std::string>)
+							return "string: " + arg;
+						return "";
+					},
+					v);
 
 	EXPECT_EQ(result, "int: 42");
 }
@@ -347,7 +349,7 @@ TEST(VariantTest, VisitThrowsOnValueless)
 	auto moved = std::move(v);
 
 	EXPECT_TRUE(v.valueless_by_exception());
-	EXPECT_THROW(ach::visit([](auto&&) { return 0; }, v), std::bad_variant_access);
+	EXPECT_THROW(ach::visit([](auto &&) { return 0; }, v), std::bad_variant_access);
 }
 
 TEST(VariantTest, StaticTypeIndices)
@@ -406,7 +408,8 @@ TEST(VariantTest, MonostateDefaultConstruction)
 	{
 		int value;
 		NonDefault() = delete;
-		explicit NonDefault(int v) : value(v) {}
+		explicit NonDefault(int v) : value(v)
+		{}
 	};
 
 	ach::variant<ach::monostate, NonDefault> v;
@@ -488,19 +491,21 @@ TEST(VariantTest, BasicMatch)
 {
 	ach::variant<int, double, std::string> v{ 42 };
 
-	auto result = ach::match(v) | [](auto&& var)
+	auto result = ach::match(v) | [](auto &&var)
 	{
-		return ach::visit([](auto&& value) -> std::string
-		{
-			using T = std::decay_t<decltype(value)>;
-			if constexpr (std::is_same_v<T, int>)
-				return "int: " + std::to_string(value);
-			else if constexpr (std::is_same_v<T, double>)
-				return "double: " + std::to_string(value);
-			else if constexpr (std::is_same_v<T, std::string>)
-				return "string: " + value;
-			return "";
-		}, var);
+		return ach::visit(
+						[](auto &&value) -> std::string
+						{
+							using T = std::decay_t<decltype(value)>;
+							if constexpr (std::is_same_v<T, int>)
+								return "int: " + std::to_string(value);
+							else if constexpr (std::is_same_v<T, double>)
+								return "double: " + std::to_string(value);
+							else if constexpr (std::is_same_v<T, std::string>)
+								return "string: " + value;
+							return "";
+						},
+						var);
 	};
 
 	EXPECT_EQ(result, "int: 42");
@@ -512,19 +517,21 @@ TEST(VariantTest, MatchWithDifferentTypes)
 	ach::variant<int, double, std::string> v2{ std::string("hello") };
 	ach::variant<int, double, std::string> v3{ 3.14 };
 
-	auto matcher = [](auto&& var)
+	auto matcher = [](auto &&var)
 	{
-		return ach::visit([]<typename T0>([[maybe_unused]] T0 && value) -> std::string
-		{
-			using T = std::decay_t<T0>;
-			if constexpr (std::is_same_v<T, int>)
-				return "matched_int";
-			else if constexpr (std::is_same_v<T, double>)
-				return "matched_double";
-			else if constexpr (std::is_same_v<T, std::string>)
-				return "matched_string";
-			return "";
-		}, var);
+		return ach::visit(
+						[]<typename T0>([[maybe_unused]] T0 &&value) -> std::string
+						{
+							using T = std::decay_t<T0>;
+							if constexpr (std::is_same_v<T, int>)
+								return "matched_int";
+							else if constexpr (std::is_same_v<T, double>)
+								return "matched_double";
+							else if constexpr (std::is_same_v<T, std::string>)
+								return "matched_string";
+							return "";
+						},
+						var);
 	};
 
 	EXPECT_EQ(ach::match(v1) | matcher, "matched_int");
@@ -536,16 +543,18 @@ TEST(VariantTest, MatchBuilderForwarding)
 {
 	ach::variant<int, std::string> v{ 42 };
 
-	auto result = ach::match(std::move(v)) | [](auto&& var)
+	auto result = ach::match(std::move(v)) | [](auto &&var)
 	{
-		return ach::visit([]<typename T0>(T0&& value) -> int
-		{
-			using T = std::decay_t<T0>;
-			if constexpr (std::is_same_v<T, int>)
-				return value * 2;
-			else
-				return 0;
-		}, var);
+		return ach::visit(
+						[]<typename T0>(T0 &&value) -> int
+						{
+							using T = std::decay_t<T0>;
+							if constexpr (std::is_same_v<T, int>)
+								return value * 2;
+							else
+								return 0;
+						},
+						var);
 	};
 
 	EXPECT_EQ(result, 84);
@@ -556,14 +565,16 @@ TEST(VariantTest, MatchWithSideEffects)
 	ach::variant<int, std::string> v{ std::string("test") };
 
 	int counter = 0;
-	auto result = ach::match(v) | [&counter](auto&& var)
+	auto result = ach::match(v) | [&counter](auto &&var)
 	{
-		return ach::visit([&counter]<typename T0>(T0&& value) -> bool
-		{
-			counter++;
-			using T = std::decay_t<T0>;
-			return std::is_same_v<T, std::string>;
-		}, var);
+		return ach::visit(
+						[&counter]<typename T0>(T0 &&value) -> bool
+						{
+							counter++;
+							using T = std::decay_t<T0>;
+							return std::is_same_v<T, std::string>;
+						},
+						var);
 	};
 
 	EXPECT_TRUE(result);
@@ -575,30 +586,34 @@ TEST(VariantTest, MatchWithComplexTypes)
 	struct Point
 	{
 		int x, y;
-		Point(int x, int y) : x(x), y(y) {}
+		Point(int x, int y) : x(x), y(y)
+		{}
 	};
 
 	struct Circle
 	{
 		int radius;
-		Circle(int r) : radius(r) {}
+		Circle(int r) : radius(r)
+		{}
 	};
 
 	ach::variant<Point, Circle, std::string> v{ Point{ 3, 4 } };
 
-	auto result = ach::match(v) | [](auto&& var)
+	auto result = ach::match(v) | [](auto &&var)
 	{
-		return ach::visit([]<typename T0>(T0&& value) -> std::string
-		{
-			using T = std::decay_t<T0>;
-			if constexpr (std::is_same_v<T, Point>)
-				return "point(" + std::to_string(value.x) + "," + std::to_string(value.y) + ")";
-			else if constexpr (std::is_same_v<T, Circle>)
-				return "circle(r=" + std::to_string(value.radius) + ")";
-			else if constexpr (std::is_same_v<T, std::string>)
-				return "string:" + value;
-			return "";
-		}, var);
+		return ach::visit(
+						[]<typename T0>(T0 &&value) -> std::string
+						{
+							using T = std::decay_t<T0>;
+							if constexpr (std::is_same_v<T, Point>)
+								return "point(" + std::to_string(value.x) + "," + std::to_string(value.y) + ")";
+							else if constexpr (std::is_same_v<T, Circle>)
+								return "circle(r=" + std::to_string(value.radius) + ")";
+							else if constexpr (std::is_same_v<T, std::string>)
+								return "string:" + value;
+							return "";
+						},
+						var);
 	};
 
 	EXPECT_EQ(result, "point(3,4)");
@@ -608,32 +623,27 @@ TEST(VariantTest, MatchInLoop)
 {
 	using test_variant = ach::variant<int, std::string, bool>;
 
-	std::vector<test_variant> variants = {
-		42,
-		std::string("hello"),
-		true,
-		99,
-		std::string("world"),
-		false
-	};
+	std::vector<test_variant> variants = { 42, std::string("hello"), true, 99, std::string("world"), false };
 
 	std::vector<std::string> results;
 
-	for (const auto& v : variants)
+	for (const auto &v: variants)
 	{
-		auto result = ach::match(v) | [](auto&& var)
+		auto result = ach::match(v) | [](auto &&var)
 		{
-			return ach::visit([](auto&& value) -> std::string
-			{
-				using T = std::decay_t<decltype(value)>;
-				if constexpr (std::is_same_v<T, int>)
-					return "int:" + std::to_string(value);
-				else if constexpr (std::is_same_v<T, std::string>)
-					return "string:" + value;
-				else if constexpr (std::is_same_v<T, bool>)
-					return value ? "bool:true" : "bool:false";
-				return "";
-			}, var);
+			return ach::visit(
+							[](auto &&value) -> std::string
+							{
+								using T = std::decay_t<decltype(value)>;
+								if constexpr (std::is_same_v<T, int>)
+									return "int:" + std::to_string(value);
+								else if constexpr (std::is_same_v<T, std::string>)
+									return "string:" + value;
+								else if constexpr (std::is_same_v<T, bool>)
+									return value ? "bool:true" : "bool:false";
+								return "";
+							},
+							var);
 		};
 		results.push_back(result);
 	}
