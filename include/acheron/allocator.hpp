@@ -836,4 +836,23 @@ namespace ach
 			return false;
 		}
 	};
+
+	template<class T, typename Allocator = allocator<T>>
+	class commited_allocator : public Allocator
+	{
+	private:
+		using base_allocator = Allocator;
+
+		[[no_unique_address]] base_allocator alloc;
+
+	public:
+		T *allocate(std::size_t n)
+		{
+			auto *ptr = alloc.allocate(n);
+#if defined(__linux) || defined(__APPLE__) || defined(__linux__)
+			madvise(ptr, n * sizeof(T), MADV_WILLNEED);
+#endif
+			return ptr;
+		}
+	};
 } // namespace ach

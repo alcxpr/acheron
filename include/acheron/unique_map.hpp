@@ -38,7 +38,7 @@ namespace ach
 	 */
 	template<typename Key, typename Value, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>,
 					 typename Allocator = ach::allocator<std::byte>>
-	class unique_map
+	class [[deprecated("There are performance issues with the implementation. Please use std::unordered_map instead.")]] unique_map
 	{
 	public:
 		using key_type = Key;

@@ -9,6 +9,7 @@
 #include <ranges>
 #include <type_traits>
 #include <utility>
+#include "allocator.hpp"
 #include "bits/config.h"
 
 namespace ach
@@ -140,6 +141,81 @@ namespace ach
 		}
 		std::unreachable();
 	}
-	
-	
+
+	template<std::random_access_iterator Iter, typename Compare = std::less<>>
+		requires std::sortable<Iter, Compare>
+	void merge(Iter first, Iter last, Compare comp = {})
+	{
+		const auto len = std::distance(first, last);
+		if (len <= 1)
+			return;
+		using value_type = std::iter_value_t<Iter>;
+		std::vector<value_type, commited_allocator<value_type>> buffer(len);
+		value_type *ACH_RESTRICT buf_ptr = buffer.data();
+		value_type *ACH_RESTRICT arr_ptr = std::to_address(first);
+		for (std::size_t width = 1; width < static_cast<std::size_t>(len); width <<= 1)
+		{
+			const std::size_t width2 = width << 1;
+			for (std::size_t i = 0; i < static_cast<std::size_t>(len); i += width2)
+			{
+				const std::size_t left_end = std::min(i + width, static_cast<std::size_t>(len));
+				const std::size_t right_end = std::min(i + width2, static_cast<std::size_t>(len));
+				std::size_t l = i, r = left_end, out = i;
+				ACH_PREFETCH(&arr_ptr[l + 64], 0, 3);
+				ACH_PREFETCH(&arr_ptr[r + 64], 0, 3);
+				value_type lv = arr_ptr[l++];
+				value_type rv = arr_ptr[r++];
+				while (l + 1 < left_end && r + 1 < right_end)
+				{
+					value_type next_lv = arr_ptr[l];
+					value_type next_rv = arr_ptr[r];
+					if (comp(lv, rv))
+					{
+						buf_ptr[out++] = std::move(lv);
+						lv = std::move(next_lv);
+						l++;
+					}
+					else
+					{
+						buf_ptr[out++] = std::move(rv);
+						rv = std::move(next_rv);
+						r++;
+					}
+					next_lv = arr_ptr[l];
+					next_rv = arr_ptr[r];
+					if (comp(lv, rv))
+					{
+						buf_ptr[out++] = std::move(lv);
+						lv = std::move(next_lv);
+						l++;
+					}
+					else
+					{
+						buf_ptr[out++] = std::move(rv);
+						rv = std::move(next_rv);
+						r++;
+					}
+				}
+				while (l < left_end && r < right_end)
+				{
+					if (comp(lv, rv))
+					{
+						buf_ptr[out++] = std::move(lv);
+						lv = arr_ptr[l++];
+					}
+					else
+					{
+						buf_ptr[out++] = std::move(rv);
+						rv = arr_ptr[r++];
+					}
+				}
+				buf_ptr[out++] = comp(lv, rv) ? std::move(lv) : std::move(rv);
+				while (l < left_end)
+					buf_ptr[out++] = std::move(arr_ptr[l++]);
+				while (r < right_end)
+					buf_ptr[out++] = std::move(arr_ptr[r++]);
+			}
+			std::copy(buf_ptr, buf_ptr + len, arr_ptr);
+		}
+	}
 } // namespace ach
