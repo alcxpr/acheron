@@ -921,6 +921,18 @@ namespace ach
 		}
 	}
 
+	/** @brief Overload helper for `visit` */
+	template<typename... Ts>
+	struct overload : Ts...
+	{
+	  using Ts::operator()...;
+	};
+
+	/** @brief Deduction guide for `overload` */
+	template<typename... Ts>
+	overload(Ts...) -> overload<Ts...>;
+
+
 	/** @brief Pattern matching builder for clean syntax */
 	template<typename Variant>
 	class match_builder
