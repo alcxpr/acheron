@@ -9,39 +9,39 @@
 
 namespace ach
 {
-  namespace d
-  {
-   	template<typename Alloc>
-    concept stateless_allocator = std::allocator_traits<Alloc>::is_always_equal::value && std::is_empty_v<Alloc>;
-
-	template<typename T, typename Alloc>
-		requires stateless_allocator<Alloc>
-	struct stateless_deleter
+	namespace d
 	{
-		void operator()(T *ptr) const noexcept
-		{
-			using traits = std::allocator_traits<Alloc>;
-			using rebound_allocator = typename traits::template rebind_alloc<T>;
-			rebound_allocator alloc{};
-			traits::destroy(alloc, ptr);
-			traits::deallocate(alloc, ptr, 1);
-		}
-	};
+		template<typename Alloc>
+		concept stateless_allocator = std::allocator_traits<Alloc>::is_always_equal::value && std::is_empty_v<Alloc>;
 
-	template<typename T, typename Alloc>
-	struct stateful_deleter
-	{
-		Alloc alloc;
-		void operator()(T *ptr) const noexcept
+		template<typename T, typename Alloc>
+			requires stateless_allocator<Alloc>
+		struct stateless_deleter
 		{
-			using traits = std::allocator_traits<Alloc>;
-			using rebound_allocator = typename traits::template rebind_alloc<T>;
-			rebound_allocator rebound(alloc);
-			traits::destroy(rebound, ptr);
-			traits::deallocate(rebound, ptr, 1);
-		}
-	};
-  }
+			void operator()(T *ptr) const noexcept
+			{
+				using traits = std::allocator_traits<Alloc>;
+				using rebound_allocator = typename traits::template rebind_alloc<T>;
+				rebound_allocator alloc{};
+				traits::destroy(alloc, ptr);
+				traits::deallocate(alloc, ptr, 1);
+			}
+		};
+
+		template<typename T, typename Alloc>
+		struct stateful_deleter
+		{
+			Alloc alloc;
+			void operator()(T *ptr) const noexcept
+			{
+				using traits = std::allocator_traits<Alloc>;
+				using rebound_allocator = typename traits::template rebind_alloc<T>;
+				rebound_allocator rebound(alloc);
+				traits::destroy(rebound, ptr);
+				traits::deallocate(rebound, ptr, 1);
+			}
+		};
+	} // namespace d
 
 	template<typename T, typename Alloc, typename... Args>
 	auto allocate_unique(Alloc alloc, Args &&...args)
