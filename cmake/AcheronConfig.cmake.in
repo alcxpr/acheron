@@ -1,0 +1,11 @@
+# this file is part of the Acheron library project, licensed under the MIT license. see `LICENSE.txt` for details
+
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/AcheronTargets.cmake")
+
+check_required_components(acheron)
+
+# set variables for users
+set(ACHERON_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+set(ACHERON_FOUND TRUE)

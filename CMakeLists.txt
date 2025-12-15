@@ -1,7 +1,10 @@
 # this file is part of the Acheron library project, licensed under the MIT license. see `LICENSE.txt` for details
 
 cmake_minimum_required(VERSION 3.15)
-project(acheron LANGUAGES C CXX)
+project(acheron
+  VERSION 0.5.0
+  LANGUAGES C CXX
+)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(ACHERON_INCLUDE_DIR "${CMAKE_CURRENT_DIR}/include")
@@ -18,8 +21,8 @@ add_library(acheron INTERFACE)
 add_library(Acheron::Acheron ALIAS acheron)
 
 target_include_directories(acheron INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
 
 target_compile_features(acheron INTERFACE cxx_std_23)
@@ -27,7 +30,45 @@ target_compile_features(acheron INTERFACE cxx_std_23)
 # <acheron/diagnostics.hpp> requires stdc++exp for <stacktrace>
 # in debug mode
 target_link_libraries(acheron INTERFACE
-        $<$<NOT:$<CONFIG:Release>>:stdc++exp>
+  $<$<NOT:$<CONFIG:Release>>:stdc++exp>
+)
+
+# installation rules
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+install(TARGETS acheron
+  EXPORT AcheronTargets
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# install header files
+install(EXPORT AcheronTargets
+  FILE AcheronTargets.cmake
+  NAMESPACE Acheron::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acheron
+)
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/AcheronConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/AcheronConfig.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acheron
+)
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/AcheronConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/AcheronConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/AcheronConfigVersion.cmake"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acheron
 )
 
 # test, bench and examples
