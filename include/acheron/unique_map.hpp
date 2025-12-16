@@ -2,13 +2,13 @@
 
 #pragma once
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <memory>
 #include <utility>
-#include <bit>
 #include "allocator.hpp"
 
 namespace ach
@@ -69,7 +69,8 @@ namespace ach
 			unique_map *map;
 			size_type index;
 
-			iterator(unique_map *m, size_type idx) noexcept : map(m), index(idx) {}
+			iterator(unique_map *m, size_type idx) noexcept : map(m), index(idx)
+			{}
 
 		public:
 			using iterator_category = std::forward_iterator_tag;
@@ -78,7 +79,8 @@ namespace ach
 			using pointer = void;
 			using reference = value_type;
 
-			iterator() noexcept : map(nullptr), index(0) {}
+			iterator() noexcept : map(nullptr), index(0)
+			{}
 
 			reference operator*() const noexcept
 			{
@@ -90,7 +92,8 @@ namespace ach
 				do
 				{
 					++index;
-				} while (index < map->capacity && !map->is_occupied(index));
+				}
+				while (index < map->capacity && !map->is_occupied(index));
 				return *this;
 			}
 
@@ -123,7 +126,8 @@ namespace ach
 			const unique_map *map;
 			size_type index;
 
-			const_iterator(const unique_map *m, size_type idx) noexcept : map(m), index(idx) {}
+			const_iterator(const unique_map *m, size_type idx) noexcept : map(m), index(idx)
+			{}
 
 		public:
 			using iterator_category = std::forward_iterator_tag;
@@ -132,8 +136,10 @@ namespace ach
 			using pointer = void;
 			using reference = value_type;
 
-			const_iterator() noexcept : map(nullptr), index(0) {}
-			const_iterator(const iterator &it) noexcept : map(it.map), index(it.index) {}
+			const_iterator() noexcept : map(nullptr), index(0)
+			{}
+			const_iterator(const iterator &it) noexcept : map(it.map), index(it.index)
+			{}
 
 			reference operator*() const noexcept
 			{
@@ -145,7 +151,8 @@ namespace ach
 				do
 				{
 					++index;
-				} while (index < map->capacity && !map->is_occupied(index));
+				}
+				while (index < map->capacity && !map->is_occupied(index));
 				return *this;
 			}
 
@@ -187,8 +194,8 @@ namespace ach
 		[[no_unique_address]] allocator_type allocator;
 
 		std::uint8_t *metadata; /* hot: scanned on every lookup */
-		key_type *keys;         /* cold: accessed only on metadata match */
-		mapped_type *values;    /* cold: accessed only on metadata match */
+		key_type *keys;					/* cold: accessed only on metadata match */
+		mapped_type *values;		/* cold: accessed only on metadata match */
 		size_type capacity;
 		size_type occupied_count;
 
@@ -375,6 +382,10 @@ namespace ach
 			if (capacity == 0 || static_cast<double>(occupied_count + 1) > max_load_factor * capacity)
 				reserve(capacity == 0 ? default_capacity : capacity * 2);
 
+			size_type existing_idx = find_index(key_arg);
+			if (existing_idx != capacity)
+				return { &keys[existing_idx], &values[existing_idx], false };
+
 			size_type mask = capacity - 1;
 			size_type idx = hash_function(key_arg) & mask;
 			std::uint8_t psl_val = 0;
@@ -418,6 +429,34 @@ namespace ach
 			/* PSL exceeded maximum, need to grow */
 			reserve(capacity * 2);
 			return emplace_impl(std::move(k), std::move(v));
+		}
+
+		template<typename K>
+		size_type find_index(const K &key) const noexcept
+		{
+			if (capacity == 0)
+				return 0;
+
+			size_type mask = capacity - 1;
+			size_type idx = hash_function(key) & mask;
+			std::uint8_t dist = 0;
+
+			while (dist <= max_psl)
+			{
+				if (!is_occupied(idx))
+					return capacity;
+
+				if (get_psl(idx) < dist)
+					return capacity;
+
+				if (key_eq(keys[idx], key))
+					return idx;
+
+				idx = (idx + 1) & mask;
+				++dist;
+			}
+
+			return capacity;
 		}
 
 		/**
@@ -471,15 +510,14 @@ namespace ach
 		 * @param equal Key equality function object.
 		 * @param alloc Allocator object.
 		 */
-		explicit unique_map(
-						size_type initial_capacity = default_capacity, const hasher &hash = hasher(),
-						const key_equal &equal = key_equal(),
-						const allocator_type &alloc = allocator_type()) noexcept(std::is_nothrow_copy_constructible_v<hasher> &&
-																																							std::is_nothrow_copy_constructible_v<key_equal> &&
-																																							std::is_nothrow_copy_constructible_v<allocator_type>) :
-				hash_function(hash),
-				key_eq(equal), allocator(alloc), metadata(nullptr), keys(nullptr), values(nullptr), capacity(0),
-				occupied_count(0)
+		explicit unique_map(size_type initial_capacity = default_capacity, const hasher &hash = hasher(),
+												const key_equal &equal = key_equal(),
+												const allocator_type &alloc =
+																allocator_type()) noexcept(std::is_nothrow_copy_constructible_v<hasher> &&
+																													 std::is_nothrow_copy_constructible_v<key_equal> &&
+																													 std::is_nothrow_copy_constructible_v<allocator_type>) :
+				hash_function(hash), key_eq(equal), allocator(alloc), metadata(nullptr), keys(nullptr), values(nullptr),
+				capacity(0), occupied_count(0)
 		{
 			reserve(initial_capacity);
 		}
@@ -722,6 +760,21 @@ namespace ach
 		insert_return_type emplace(key_type &&key, Args &&...args)
 		{
 			return emplace_impl(std::move(key), std::forward<Args>(args)...);
+		}
+
+		/**
+		 * @brief Emplace a key-value pair into the map (heterogeneous key support).
+		 * @tparam KeyArg Type convertible to key_type.
+		 * @tparam Args Types of arguments to construct the value.
+		 * @param key_arg Key-like argument to insert.
+		 * @param args Arguments forwarded to value constructor.
+		 * @return insert_return_type containing pointers to key and value, and insertion status.
+		 */
+		template<typename KeyArg, typename... Args>
+			requires(!std::same_as<std::remove_cvref_t<KeyArg>, key_type>)
+		insert_return_type emplace(KeyArg &&key_arg, Args &&...args)
+		{
+			return emplace_impl(std::forward<KeyArg>(key_arg), std::forward<Args>(args)...);
 		}
 
 		/**
