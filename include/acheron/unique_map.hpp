@@ -15,20 +15,6 @@ namespace ach
 {
 	/**
 	 * @brief A high-performance open-addressed hash table optimized for lookup speed.
-	 *
-	 * unique_map uses Robin Hood hashing with linear probing and a separate metadata array
-	 * for cache-optimal lookups. The metadata is scanned without touching key/value data,
-	 * minimizing cache misses on lookup failures.
-	 *
-	 * Memory layout:
-	 * - Metadata array: 1 byte per slot [occupied:1 | psl:7]
-	 * - Key/value array: inline storage, accessed only on metadata match
-	 *
-	 * Performance characteristics:
-	 * - Lookup: O(1) average, ~2-3 cache misses on hit, ~1 on miss
-	 * - Insert: O(1) average with Robin Hood displacement
-	 * - Erase: O(1) with backward shift deletion (no tombstones)
-	 *
 	 * @tparam Key Key type (must be copyable or moveable).
 	 * @tparam Value Mapped value type.
 	 * @tparam Hash Hash function object type.
@@ -367,7 +353,7 @@ namespace ach
 				++psl_val;
 			}
 
-			ACH_ASSERT(psl_val > max_psl, "PSL exceeds maximum allowed. Your hash function is very shit.")
+			ACH_ASSERT(psl_val > max_psl, "PSL exceeds maximum allowed. Your hash function is very shit.");
 		}
 
 		/**
@@ -798,11 +784,53 @@ namespace ach
 		}
 
 		/**
+		 * @brief Insert a key-value pair into the map (heterogeneous key).
+		 * @param key Key-like object to insert.
+		 * @param value Value to insert.
+		 * @return insert_return_type containing pointers to key and value, and insertion status.
+		 */
+		template<typename K>
+			requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
+		insert_return_type insert(K &&key, const mapped_type &value)
+		{
+			return emplace(std::forward<K>(key), value);
+		}
+
+		/**
+		 * @brief Insert a key-value pair into the map.
+		 * @param key Key-like object to insert.
+		 * @param value Value to insert (moved).
+		 * @return insert_return_type containing pointers to key and value, and insertion status.
+		 */
+		template<typename K>
+			requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
+		insert_return_type insert(K &&key, mapped_type &&value)
+		{
+			return emplace(std::forward<K>(key), std::move(value));
+		}
+
+		/**
 		 * @brief Erase an element by key.
 		 * @param key Key to erase.
 		 * @return Number of elements erased (0 or 1).
 		 */
 		size_type erase(const key_type &key)
+		{
+			size_type idx = find_index(key);
+			if (idx == capacity)
+				return 0;
+
+			erase_at(idx);
+			return 1;
+		}
+
+		/**
+		 * @brief Erase an element by key (heterogeneous).
+		 * @param key Key-like object to erase.
+		 * @return Number of elements erased (0 or 1).
+		 */
+		template<typename K>
+		size_type erase(const K &key)
 		{
 			size_type idx = find_index(key);
 			if (idx == capacity)
@@ -835,6 +863,30 @@ namespace ach
 		}
 
 		/**
+		 * @brief Find an element by key (heterogeneous).
+		 * @param key Key-like object to search for.
+		 * @return Pointer to the mapped value, or nullptr if not found.
+		 */
+		template<typename K>
+		mapped_type *find(const K &key) noexcept
+		{
+			size_type idx = find_index(key);
+			return idx != capacity ? &values[idx] : nullptr;
+		}
+
+		/**
+		 * @brief Find an element by key (heterogeneous, const version).
+		 * @param key Key-like object to search for.
+		 * @return Const pointer to the mapped value, or nullptr if not found.
+		 */
+		template<typename K>
+		const mapped_type *find(const K &key) const noexcept
+		{
+			size_type idx = find_index(key);
+			return idx != capacity ? &values[idx] : nullptr;
+		}
+
+		/**
 		 * @brief Get reference to value, inserting default if not present.
 		 * @param key Key to find or insert.
 		 * @return Reference to the mapped value.
@@ -857,11 +909,35 @@ namespace ach
 		}
 
 		/**
+		 * @brief Get reference to value, inserting default if not present (heterogeneous).
+		 * @param key Key-like object to find or insert.
+		 * @return Reference to the mapped value.
+		 */
+		template<typename K>
+			requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
+		mapped_type &operator[](K &&key)
+		{
+			auto result = emplace(std::forward<K>(key));
+			return *result.second;
+		}
+
+		/**
 		 * @brief Check if a key exists in the map.
 		 * @param key Key to search for.
 		 * @return True if key exists, false otherwise.
 		 */
 		bool contains(const key_type &key) const noexcept
+		{
+			return find_index(key) != capacity;
+		}
+
+		/**
+		 * @brief Check if a key exists in the map.
+		 * @param key Key-like object to search for.
+		 * @return True if key exists, false otherwise.
+		 */
+		template<typename K>
+		bool contains(const K &key) const noexcept
 		{
 			return find_index(key) != capacity;
 		}

@@ -143,7 +143,7 @@ namespace ach
 	}
 
 	template<std::unsigned_integral T>
-  constexpr T byteswap(T x) noexcept
+	constexpr T byteswap(T x) noexcept
 	{
 		return std::byteswap(x);
 	}

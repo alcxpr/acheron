@@ -6,13 +6,13 @@
 
 namespace ach
 {
-  template<std::size_t Align, typename T>
-  constexpr T* assume_aligned(T* ptr)
-  {
+	template<std::size_t Align, typename T>
+	constexpr T *assume_aligned(T *ptr)
+	{
 #if defined(__clang__) || defined(__GNUC__)
-    return static_cast<T*>(__builtin_assume_aligned(ptr, Align));
+		return static_cast<T *>(__builtin_assume_aligned(ptr, Align));
 #else
-    return ptr;
+		return ptr;
 #endif
-  }
-}
+	}
+} // namespace ach
