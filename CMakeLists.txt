@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.15)
 project(acheron
-  VERSION 0.5.1
+  VERSION 0.5.2
   LANGUAGES C CXX
 )
 

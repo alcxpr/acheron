@@ -72,7 +72,7 @@ namespace ach
 			 * Allocates a 64MB region using `VirtualAlloc` or `mmap`.
 			 * Initializes bitmaps at the end of the arena to keep allocations contiguous.
 			 */
-			explicit arena(std::size_t block_sz) : block_size(block_sz), block_shift(std::countr_zero(block_sz))
+			explicit arena(std::size_t block_sz) : block_size(block_sz), block_shift(static_cast<std::uint8_t>(std::countr_zero(block_sz)))
 			{
 				if constexpr (P == allocation_policy::shared)
 				{
@@ -203,7 +203,7 @@ namespace ach
 				 *
 				 * return ptr >= base_addr && ptr < (static_cast<char *>(base_addr) + usable_capacity);
 				 */
-				std::size_t offset = static_cast<char *>(ptr) - static_cast<char *>(base_addr);
+				auto offset = static_cast<std::size_t>(static_cast<char *>(ptr) - static_cast<char *>(base_addr));
 				return offset < usable_capacity;
 			}
 
@@ -281,7 +281,7 @@ namespace ach
 					if (l1_word != 0)
 					{
 						int l1_bit = std::countr_zero(l1_word);
-						std::size_t l1_index = idx * 64 + l1_bit;
+						std::size_t l1_index = idx * 64 + static_cast<std::size_t>(l1_bit);
 						std::size_t l2_region_start = l1_index * l2_per_l1;
 
 						for (std::size_t j = 0; j < l2_per_l1; ++j)
@@ -296,7 +296,7 @@ namespace ach
 								while (l2_word != 0)
 								{
 									int bit = std::countr_zero(l2_word);
-									std::size_t block_index = l2_idx * 64 + bit;
+									std::size_t block_index = l2_idx * 64 + static_cast<std::size_t>(bit);
 
 									if (block_index >= num_blocks)
 										break;
@@ -317,7 +317,7 @@ namespace ach
 								if (l2_word != 0)
 								{
 									int bit = std::countr_zero(l2_word);
-									std::size_t block_index = l2_idx * 64 + bit;
+									std::size_t block_index = l2_idx * 64 + static_cast<std::size_t>(bit);
 
 									if (block_index >= num_blocks)
 										break;
@@ -414,7 +414,7 @@ namespace ach
 			 */
 			[[nodiscard]] std::size_t pointer_to_block_index(const void *ptr) const noexcept
 			{
-				std::size_t offset = static_cast<const char *>(ptr) - static_cast<const char *>(base_addr);
+				auto offset = static_cast<std::size_t>(static_cast<const char *>(ptr) - static_cast<const char *>(base_addr));
 				return offset >> block_shift;
 			}
 		};
@@ -458,7 +458,7 @@ namespace ach
 			{
 				if (size <= min_size)
 					return 0;
-				return std::bit_width(size - 1) - std::bit_width(min_size - 1);
+				return static_cast<std::size_t>(std::bit_width(size - 1) - std::bit_width(min_size - 1));
 			}
 		};
 	} // namespace d
