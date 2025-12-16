@@ -315,7 +315,7 @@ namespace ach
 } // namespace ach
 
 /* macro alias for shorthand uses */
-#define ACH_ASSERT(cond, msg) ::ach::assert((cond), (msg), std::source_location::current())
+#define ACH_ASSERT(cond, msg) ::ach::expect((cond), (msg), std::source_location::current())
 #define ACH_PANIC(msg) ::ach::panic((msg), std::source_location::current())
 #define ACH_WARN(msg) ::ach::warn((msg), std::source_location::current())
 #define ACH_INFO(msg) ::ach::info((msg), std::source_location::current())

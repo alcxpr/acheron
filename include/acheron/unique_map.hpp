@@ -7,9 +7,9 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
-#include <memory>
 #include <utility>
 #include "allocator.hpp"
+#include "diagnostic.hpp"
 
 namespace ach
 {
@@ -367,9 +367,7 @@ namespace ach
 				++psl_val;
 			}
 
-			/* PSL exceeded max_psl - this should never happen if reserve() sized the table correctly.
-			 * This indicates either a catastrophically bad hash function or a bug in reserve(). */
-			/* TODO: consider making this an assertion in debug builds */
+			ACH_ASSERT(psl_val > max_psl, "PSL exceeds maximum allowed. Your hash function is very shit.")
 		}
 
 		/**
