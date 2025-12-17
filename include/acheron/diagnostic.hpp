@@ -6,7 +6,10 @@
 #include <iostream>
 #include <source_location>
 #ifndef NDEBUG
+#if __has_include(<stacktrace>)
+#define ACH_USE_STACKTRACE
 #include <stacktrace>
+#endif
 #endif
 #include <string>
 #include <string_view>
@@ -114,7 +117,7 @@ namespace ach
 								<< "\n";
 			std::cerr << d::c(d::reset) << "in " << loc.function_name() << d::c(d::reset) << "\n";
 
-#ifndef NDEBUG
+#ifdef ACH_USE_STACKTRACE
 			std::cerr << "\n" << d::c(d::bold_red) << "stack trace:" << d::c(d::reset) << "\n";
 			std::cerr << std::to_string(std::stacktrace::current()) << "\n";
 #endif
@@ -157,7 +160,7 @@ namespace ach
 								<< d::c(d::reset) << "\n";
 			std::cerr << d::c(d::dim_gray) << "in " << location.function_name() << d::c(d::reset) << "\n";
 
-#ifndef NDEBUG
+#ifdef ACH_USE_STACKTRACE
 			std::cerr << "\n" << d::c(d::dim_gray) << "stack trace:" << d::c(d::reset) << "\n";
 			std::cerr << std::to_string(std::stacktrace::current()) << "\n";
 #endif
@@ -192,7 +195,7 @@ namespace ach
 	inline void debug_assert([[maybe_unused]] bool condition, [[maybe_unused]] std::string_view message,
 													 [[maybe_unused]] std::source_location location = std::source_location::current())
 	{
-#if defined(DEBUG) || !defined(NDEBUG)
+#ifdef ACH_USE_STACKTRACE
 		::ach::expect(condition, message, location);
 #endif
 	}
@@ -323,3 +326,5 @@ namespace ach
 #define ACH_UNREACHABLE() ::ach::panic("unreachable code reached", std::source_location::current())
 #define ACH_TODO(msg) ::ach::panic(std::format("TODO: {}", (msg)), std::source_location::current())
 #define ACH_DEBUG_ASSERT(cond, msg) ::ach::debug_assert((cond), (msg), std::source_location::current())
+
+#undef ACH_USE_STACKTRACE

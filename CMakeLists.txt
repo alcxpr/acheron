@@ -27,11 +27,20 @@ target_include_directories(acheron INTERFACE
 
 target_compile_features(acheron INTERFACE cxx_std_23)
 
-# <acheron/diagnostics.hpp> requires stdc++exp for <stacktrace>
-# in debug mode
-target_link_libraries(acheron INTERFACE
-  $<$<NOT:$<CONFIG:Release>>:stdc++exp>
-)
+include(CheckIncludeFileCXX)
+check_include_file_cxx("stacktrace" HAVE_STACKTRACE)
+
+if(HAVE_STACKTRACE)
+    message(STATUS "Toolchain supports <stacktrace>")
+    # <acheron/diagnostics.hpp> requires stdc++exp for <stacktrace>
+    # in debug mode
+    target_link_libraries(acheron INTERFACE
+    $<$<NOT:$<CONFIG:Release>>:stdc++exp>
+    )
+else()
+    message(STATUS "No <stacktrace> support")
+endif()
+
 
 # installation rules
 include(GNUInstallDirs)
